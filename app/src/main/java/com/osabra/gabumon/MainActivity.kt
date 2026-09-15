@@ -3,40 +3,29 @@ package com.osabra.gabumon
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+
+private data class Digimon(val name: String, val emoji: String)
+private val digimon = listOf(
+    Digimon("Gabumon", "🐺"), Digimon("Agumon", "🦖"), Digimon("Patamon", "🪽"),
+    Digimon("Gatomon", "🐱"), Digimon("Tentomon", "🐞"), Digimon("Gomamon", "🦭"),
+    Digimon("Palmon", "🌿"), Digimon("Biyomon", "🐦"), Digimon("Veemon", "🐉"),
+    Digimon("Wormmon", "🐛"), Digimon("Guilmon", "🦎"), Digimon("Renamon", "🦊")
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,68 +34,73 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@androidx.compose.runtime.Composable
+@Composable
 fun GabumonApp() {
-    var mood by remember { mutableStateOf("¡Hola! Soy Gabumon 🐺") }
-    var affection by remember { mutableStateOf(72) }
-    val transition = rememberInfiniteTransition(label = "breathing")
-    val scale by transition.animateFloat(
-        initialValue = 0.96f,
-        targetValue = 1.03f,
-        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
-        label = "breath"
-    )
-
+    var loading by remember { mutableStateOf(true) }
+    var selected by remember { mutableStateOf(0) }
+    var chosen by remember { mutableStateOf<Digimon?>(null) }
+    LaunchedEffect(Unit) { delay(2200); loading = false }
     MaterialTheme {
-        Column(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF10141A)).padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("GABUMON", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Text("Tu compañero digital", color = Color(0xFFB9C2CC), fontSize = 14.sp)
-            Spacer(Modifier.height(20.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A222C))
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🐺", fontSize = 120.sp, modifier = Modifier.scale(scale))
-                        Spacer(Modifier.height(12.dp))
-                        Text(mood, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Cariño: $affection%", color = Color(0xFFB9C2CC))
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionButton("👋 Saludar") {
-                    mood = "¡Me alegra verte!"
-                    affection = (affection + 2).coerceAtMost(100)
-                }
-                ActionButton("❤️ Acariciar") {
-                    mood = "Gabu... gabu... ❤️"
-                    affection = (affection + 5).coerceAtMost(100)
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionButton("⚡ Jugar") { mood = "¡Vamos a entrenar! ⚡" }
-                ActionButton("😴 Dormir") { mood = "Zzz... hasta mañana..." }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF06111F), Color(0xFF102C45), Color(0xFF02070D))))) {
+            when {
+                loading -> DigiviceSplash()
+                chosen == null -> Selector(selected, { selected = it }, { chosen = digimon[selected] })
+                else -> Companion(chosen!!)
             }
         }
     }
 }
 
-@androidx.compose.runtime.Composable
-private fun ActionButton(text: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.weight(1f).height(54.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D3743))
-    ) { Text(text, fontSize = 14.sp) }
+@Composable
+private fun DigiviceSplash() {
+    val transition = rememberInfiniteTransition(label = "pulse")
+    val pulse by transition.animateFloat(.94f, 1.06f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse")
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Text("DIGIVICE", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(18.dp))
+        Box(Modifier.size(210.dp, 270.dp).scale(pulse).background(Color(0xFF263A4D), RoundedCornerShape(45.dp)), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(145.dp, 105.dp).background(Color(0xFF07141D), RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
+                    Text("◆", color = Color(0xFF4DE7FF), fontSize = 58.sp)
+                }
+                Spacer(Modifier.height(22.dp)); Text("DIGITAL WORLD", color = Color.LightGray, fontSize = 12.sp)
+            }
+        }
+        Spacer(Modifier.height(20.dp)); Text("Iniciando…", color = Color.White.copy(alpha = .8f))
+    }
+}
+
+@Composable
+private fun Selector(index: Int, setIndex: (Int) -> Unit, choose: () -> Unit) {
+    val d = digimon[index]
+    Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(32.dp))
+        Text("ELIGE A TU COMPAÑERO", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp)); Text("Elige el Digimon que más te guste", color = Color.LightGray)
+        Spacer(Modifier.height(28.dp))
+        Card(Modifier.fillMaxWidth().weight(1f), shape = RoundedCornerShape(28.dp)) {
+            Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text(d.name, color = Color(0xFF1C8AB5), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(16.dp)); Text(d.emoji, fontSize = 125.sp)
+                Spacer(Modifier.height(12.dp)); Text("Modelo 3D preparado", color = Color.Gray)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = { setIndex((index - 1 + digimon.size) % digimon.size) }) { Text("‹") }
+            Spacer(Modifier.width(25.dp)); Text("${index + 1} / ${digimon.size}", color = Color.White, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(25.dp)); Button(onClick = { setIndex((index + 1) % digimon.size) }) { Text("›") }
+        }
+        Spacer(Modifier.height(10.dp)); Button(onClick = choose, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("ELEGIR COMO COMPAÑERO", fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun Companion(d: Digimon) {
+    Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Text("TU COMPAÑERO", color = Color.LightGray); Spacer(Modifier.height(8.dp))
+        Text(d.name, color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(25.dp)); Text(d.emoji, fontSize = 150.sp)
+        Spacer(Modifier.height(20.dp)); Text("¡Hola! Soy ${d.name}.", color = Color.White, fontSize = 20.sp)
+    }
 }
