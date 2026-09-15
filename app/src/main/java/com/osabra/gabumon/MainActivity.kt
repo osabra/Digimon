@@ -45,7 +45,7 @@ fun GabumonApp() {
             when {
                 loading -> DigiviceSplash()
                 chosen == null -> Selector(selected, { selected = it }, { chosen = digimon[selected] })
-                else -> Companion(chosen!!)
+                else -> Companion(chosen!!, onBack = { chosen = null })
             }
         }
     }
@@ -96,11 +96,21 @@ private fun Selector(index: Int, setIndex: (Int) -> Unit, choose: () -> Unit) {
 }
 
 @Composable
-private fun Companion(d: Digimon) {
-    Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("TU COMPAÑERO", color = Color.LightGray); Spacer(Modifier.height(8.dp))
-        Text(d.name, color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(25.dp)); Text(d.emoji, fontSize = 150.sp)
-        Spacer(Modifier.height(20.dp)); Text("¡Hola! Soy ${d.name}.", color = Color.White, fontSize = 20.sp)
+private fun Companion(d: Digimon, onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(20.dp)) {
+        Button(onClick = onBack) {
+            Text("←  Volver a elegir Digimon", fontWeight = FontWeight.Bold)
+        }
+        Column(
+            Modifier.fillMaxWidth().weight(1f).padding(horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("TU COMPAÑERO", color = Color.LightGray)
+            Spacer(Modifier.height(8.dp))
+            Text(d.name, color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(25.dp)); Text(d.emoji, fontSize = 150.sp)
+            Spacer(Modifier.height(20.dp)); Text("¡Hola! Soy ${d.name}.", color = Color.White, fontSize = 20.sp)
+        }
     }
 }
