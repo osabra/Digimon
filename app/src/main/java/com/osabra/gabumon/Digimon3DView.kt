@@ -78,9 +78,8 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
             part(0f, 2.30f + bob, 0f, .73f, .70f, .62f, PELT)
             part(-.28f, 2.16f + bob, -.54f, .30f, .23f, .25f, MUZZLE)
             part(.28f, 2.16f + bob, -.54f, .30f, .23f, .25f, MUZZLE)
-            part(0f, 2.08f + bob, -.79f, .14f, .09f, .07f, BLACK)
-            part(-.10f, 2.00f + bob, -.735f, .07f, .035f, .025f, BLACK)
-            part(.10f, 2.00f + bob, -.735f, .07f, .035f, .025f, BLACK)
+            // Boca única y pequeña, evitando el efecto de dos manchas/mofletes negros.
+            part(0f, 2.03f + bob, -.805f, .115f, .055f, .035f, BLACK)
 
             // Orejas azules con interior rosado.
             part(-.53f, 2.77f + bob, .02f, .18f, .45f, .18f, BLUE)
@@ -126,8 +125,10 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
             part(.34f, .30f + bob, 0f, .30f, .60f, .32f, BLUE)
             part(-.38f, -.17f + bob, -.34f, .39f, .18f, .47f, FOOT)
             part(.38f, -.17f + bob, -.34f, .39f, .18f, .47f, FOOT)
-            claw(-.53f, -.28f + bob, -.68f); claw(-.38f, -.30f + bob, -.72f)
-            claw(.38f, -.30f + bob, -.72f); claw(.53f, -.28f + bob, -.68f)
+            claw(-.53f, -.28f + bob, -.68f)
+            claw(-.38f, -.30f + bob, -.72f)
+            claw(.38f, -.30f + bob, -.72f)
+            claw(.53f, -.28f + bob, -.68f)
 
             // Cola redondeada hacia atrás.
             part(.91f, 1.14f + bob, .43f, .23f, .25f, .72f, BLUE)
@@ -165,8 +166,6 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
             Matrix.multiplyMM(mvp, 0, v, 0, model, 0)
             Matrix.multiplyMM(mvp, 0, p, 0, mvp, 0)
 
-            // La rotación se aplica también a la normal: la luz permanece fija en el mundo
-            // y el modelo se percibe como un objeto 3D real al girarlo 360°.
             normal[0] = rot[0]; normal[1] = rot[1]; normal[2] = rot[2]
             normal[3] = rot[4]; normal[4] = rot[5]; normal[5] = rot[6]
             normal[6] = rot[8]; normal[7] = rot[9]; normal[8] = rot[10]
@@ -236,7 +235,7 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
                     float fill=max(dot(nn,normalize(vec3(.55,.35,.75))),0.0);
                     float rim=pow(1.0-max(dot(nn,vec3(0.0,0.0,1.0)),0.0),2.4);
                     float spec=pow(max(dot(reflect(-ll,nn),vec3(0.0,0.0,1.0)),0.0),28.0);
-                    vec3 base=c.rgb*(0.38+0.47*d+0.15*fill);
+                    vec3 base=c.rgb*(0.43+0.47*d+0.10*fill);
                     base += c.rgb*0.10*rim;
                     base += vec3(1.0)*0.075*spec;
                     gl_FragColor=vec4(base,c.a);
