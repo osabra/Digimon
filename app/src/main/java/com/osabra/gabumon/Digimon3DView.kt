@@ -14,7 +14,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Stylized 3D Gabumon model. Drag horizontally to rotate. */
+/** Stylized, more detailed Gabumon-inspired 3D companion. Drag horizontally to rotate. */
 class Digimon3DView(context: Context) : GLSurfaceView(context) {
     private val renderer = Renderer()
     private var lastX = 0f
@@ -59,51 +59,73 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
             val t = (System.nanoTime() - start) / 1_000_000_000f
             val breathe = 1f + sin(t * 2.2f) * .018f
-            val sway = sin(t * 1.6f) * 1.5f
             Matrix.setLookAtM(view, 0, 0f, 1.55f, 7.0f, 0f, 1.45f, 0f, 0f, 1f, 0f)
 
-            // Fur body / coat
-            part(0f, 1.12f, .05f, 1.03f, 1.15f * breathe, .78f, 0.68f, .72f, .77f)
-            // White belly
-            part(0f, 1.12f, -.67f, .67f, .82f * breathe, .18f, .94f, .95f, .92f)
-            // Head
-            part(0f, 2.35f, -.03f, .80f, .78f, .72f, .72f, .76f, .80f)
-            // Muzzle
-            part(0f, 2.05f, -.64f, .45f, .30f, .30f, .95f, .95f, .92f)
-            // Nose
-            part(0f, 2.10f, -.91f, .13f, .10f, .09f, .10f, .11f, .12f)
-            // Ears
-            part(-.58f, 2.82f, -.02f, .20f, .50f, .20f, .66f, .70f, .74f)
-            part(.58f, 2.82f, -.02f, .20f, .50f, .20f, .66f, .70f, .74f)
-            // Inner ears
-            part(-.58f, 2.83f, -.20f, .09f, .31f, .07f, .22f, .25f, .28f)
-            part(.58f, 2.83f, -.20f, .09f, .31f, .07f, .22f, .25f, .28f)
-            // Eyes
-            part(-.25f, 2.42f, -.69f, .095f, .12f, .07f, .015f, .02f, .02f)
-            part(.25f, 2.42f, -.69f, .095f, .12f, .07f, .015f, .02f, .02f)
-            // Eye highlights
-            part(-.22f, 2.46f, -.76f, .025f, .032f, .018f, 1f, 1f, 1f)
-            part(.28f, 2.46f, -.76f, .025f, .032f, .018f, 1f, 1f, 1f)
-            // Yellow forehead horn / crest
-            part(0f, 2.87f, -.05f, .13f, .34f, .13f, .96f, .78f, .12f)
-            // Arms and hands
-            part(-.82f, 1.25f, -.02f, .25f, .64f, .28f, .20f, .34f, .42f)
-            part(.82f, 1.25f, -.02f, .25f, .64f, .28f, .20f, .34f, .42f)
-            part(-.84f, .74f, -.23f, .26f, .22f, .30f, .88f, .90f, .86f)
-            part(.84f, .74f, -.23f, .26f, .22f, .30f, .88f, .90f, .86f)
-            // Legs and feet
-            part(-.38f, .20f, -.02f, .30f, .65f, .34f, .20f, .34f, .42f)
-            part(.38f, .20f, -.02f, .30f, .65f, .34f, .20f, .34f, .42f)
-            part(-.40f, -.24f, -.32f, .36f, .18f, .52f, .90f, .91f, .88f)
-            part(.40f, -.24f, -.32f, .36f, .18f, .52f, .90f, .91f, .88f)
-            // Tail / fur behind the body
-            part(-.98f, 1.28f, .45f, .24f, .24f, .90f, .62f, .66f, .71f)
-            part(-1.18f, 1.55f, .82f, .30f, .30f, .48f, .70f, .73f, .77f)
+            // Main fur body and yellow underside.
+            part(0f, 1.16f, .05f, 1.02f, 1.16f * breathe, .78f, .10f, .42f, .63f)
+            part(0f, 1.12f, -.68f, .67f, .84f * breathe, .18f, .93f, .82f, .48f)
 
-            // Tiny idle motion on the ears for a livelier model.
-            // The main model remains stable while breathing.
-            @Suppress("UNUSED_VARIABLE") val unused = sway
+            // Head, muzzle and nose.
+            part(0f, 2.38f, -.03f, .81f, .78f, .72f, .88f, .90f, .86f)
+            part(0f, 2.10f, -.65f, .46f, .31f, .31f, .94f, .86f, .70f)
+            part(0f, 2.12f, -.94f, .13f, .10f, .09f, .025f, .025f, .025f)
+
+            // Long ears and inner ear.
+            part(-.58f, 2.82f, -.01f, .20f, .51f, .20f, .12f, .40f, .61f)
+            part(.58f, 2.82f, -.01f, .20f, .51f, .20f, .12f, .40f, .61f)
+            part(-.58f, 2.83f, -.20f, .09f, .31f, .07f, .93f, .68f, .50f)
+            part(.58f, 2.83f, -.20f, .09f, .31f, .07f, .93f, .68f, .50f)
+
+            // Large expressive eyes + highlights.
+            part(-.25f, 2.42f, -.69f, .105f, .13f, .075f, .07f, .025f, .025f)
+            part(.25f, 2.42f, -.69f, .105f, .13f, .075f, .07f, .025f, .025f)
+            part(-.25f, 2.43f, -.755f, .060f, .085f, .030f, .55f, .08f, .06f)
+            part(.25f, 2.43f, -.755f, .060f, .085f, .030f, .55f, .08f, .06f)
+            part(-.22f, 2.48f, -.785f, .022f, .028f, .015f, 1f, 1f, 1f)
+            part(.28f, 2.48f, -.785f, .022f, .028f, .015f, 1f, 1f, 1f)
+
+            // Yellow horn/crest.
+            part(0f, 2.91f, -.02f, .14f, .37f, .14f, .94f, .68f, .13f)
+            part(0f, 3.19f, -.02f, .08f, .22f, .08f, .98f, .78f, .18f)
+
+            // White/cream pelt mantle sitting over the blue body.
+            part(0f, 2.00f, .49f, .72f, .82f, .28f, .93f, .90f, .82f)
+            part(-.63f, 1.72f, .43f, .33f, .72f, .28f, .94f, .91f, .83f)
+            part(.63f, 1.72f, .43f, .33f, .72f, .28f, .94f, .91f, .83f)
+
+            // Blue stripes across the pelt and limbs.
+            stripe(-.63f, 2.05f, .48f, .34f, .10f, .30f)
+            stripe(.63f, 2.05f, .48f, .34f, .10f, .30f)
+            stripe(-.78f, 1.70f, .42f, .28f, .10f, .27f)
+            stripe(.78f, 1.70f, .42f, .28f, .10f, .27f)
+            stripe(-.84f, 1.38f, -.01f, .24f, .11f, .30f)
+            stripe(.84f, 1.38f, -.01f, .24f, .11f, .30f)
+
+            // Arms, hands and red claws.
+            part(-.83f, 1.25f, -.02f, .25f, .65f, .28f, .10f, .42f, .63f)
+            part(.83f, 1.25f, -.02f, .25f, .65f, .28f, .10f, .42f, .63f)
+            part(-.84f, .73f, -.25f, .27f, .23f, .31f, .94f, .88f, .73f)
+            part(.84f, .73f, -.25f, .27f, .23f, .31f, .94f, .88f, .73f)
+            claw(-.98f, .67f, -.49f); claw(-.80f, .63f, -.52f); claw(.98f, .67f, -.49f); claw(.80f, .63f, -.52f)
+
+            // Legs, feet and claws.
+            part(-.38f, .22f, -.02f, .31f, .66f, .35f, .10f, .42f, .63f)
+            part(.38f, .22f, -.02f, .31f, .66f, .35f, .10f, .42f, .63f)
+            part(-.40f, -.24f, -.34f, .38f, .19f, .54f, .94f, .88f, .73f)
+            part(.40f, -.24f, -.34f, .38f, .19f, .54f, .94f, .88f, .73f)
+            claw(-.58f, -.27f, -.72f); claw(-.39f, -.29f, -.76f); claw(.39f, -.29f, -.76f); claw(.58f, -.27f, -.72f)
+
+            // Tail and yellow back plates.
+            part(-1.02f, 1.28f, .52f, .25f, .25f, .92f, .10f, .42f, .63f)
+            part(-1.22f, 1.55f, .88f, .31f, .31f, .50f, .94f, .70f, .16f)
+            part(.0f, 1.70f, .78f, .48f, .66f, .18f, .94f, .70f, .16f)
         }
+
+        private fun stripe(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float) =
+            part(x,y,z,sx,sy,sz,.08f,.35f,.60f)
+
+        private fun claw(x:Float,y:Float,z:Float) =
+            part(x,y,z,.055f,.14f,.09f,.72f,.05f,.05f)
 
         private fun part(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float, r: Float, g: Float, b: Float) {
             Matrix.setIdentityM(model, 0)
@@ -125,8 +147,8 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
         private var colorHandle = 0
 
         init {
-            val stacks = 18
-            val slices = 24
+            val stacks = 20
+            val slices = 28
             val data = ArrayList<Float>()
             for (i in 0..stacks) {
                 val v = i.toFloat() / stacks
