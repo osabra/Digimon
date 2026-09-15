@@ -15,46 +15,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class Digimon3DView(context: Context, initialDigimon: String = "Gabumon") : GLSurfaceView(context) {
-    private val renderer = Renderer(initialDigimon)
-    private var lastX = 0f
-    init { setEGLContextClientVersion(2); setRenderer(renderer); renderMode = RENDERMODE_CONTINUOUSLY }
-    fun setDigimon(name: String) { renderer.name = name }
-    override fun onTouchEvent(e: MotionEvent): Boolean {
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { lastX = e.x; return true }
-            MotionEvent.ACTION_MOVE -> { renderer.rotation += (e.x-lastX)*.42f; lastX=e.x; return true }
-        }
-        return true
-    }
+    private val renderer=Renderer(initialDigimon); private var lastX=0f
+    init{setEGLContextClientVersion(2);setRenderer(renderer);renderMode=RENDERMODE_CONTINUOUSLY}
+    fun setDigimon(name:String){renderer.name=name}
+    override fun onTouchEvent(e:MotionEvent):Boolean{when(e.actionMasked){MotionEvent.ACTION_DOWN->{lastX=e.x;return true};MotionEvent.ACTION_MOVE->{renderer.rotation+=(e.x-lastX)*.42f;lastX=e.x;return true}};return true}
 
-    private class Renderer(var name: String) : GLSurfaceView.Renderer {
-        var rotation=0f
-        private val projection=FloatArray(16); private val view=FloatArray(16); private val model=FloatArray(16); private val mvp=FloatArray(16); private val rot=FloatArray(16); private val normal=FloatArray(9)
-        private lateinit var mesh: Mesh; private var start=System.nanoTime()
-        override fun onSurfaceCreated(g:GL10?, c:EGLConfig?) { GLES20.glClearColor(.006f,.018f,.032f,1f); GLES20.glEnable(GLES20.GL_DEPTH_TEST); GLES20.glEnable(GLES20.GL_CULL_FACE); mesh=Mesh(); mesh.createProgram() }
-        override fun onSurfaceChanged(g:GL10?, w:Int, h:Int) { GLES20.glViewport(0,0,w,h); Matrix.perspectiveM(projection,0,38f,w.toFloat()/h,.1f,100f) }
-        override fun onDrawFrame(g:GL10?) {
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-            val t=(System.nanoTime()-start)/1e9f
-            val bob=sin(t*2.1f)*.018f
-            val breathe=1f+sin(t*2.1f)*.012f
-            Matrix.setLookAtM(view,0,0f,1.52f,-7.6f,0f,1.42f,0f,0f,1f,0f)
-            Matrix.setIdentityM(rot,0); Matrix.rotateM(rot,0,rotation,0f,1f,0f)
-            when(name) {
-                "Gabumon"->gabumon(bob,breathe,t); "Agumon"->agumon(bob,breathe,t); "Patamon"->patamon(bob,breathe,t); "Gatomon"->gatomon(bob,breathe,t)
-                "Tentomon"->tentomon(bob,breathe,t); "Gomamon"->gomamon(bob,breathe,t); "Palmon"->palmon(bob,breathe,t); "Biyomon"->biyomon(bob,breathe,t)
-                "Veemon"->veemon(bob,breathe,t); "Wormmon"->wormmon(bob,breathe,t); "Guilmon"->guilmon(bob,breathe,t); "Renamon"->renamon(bob,breathe,t)
-                else->gabumon(bob,breathe,t)
-            }
-        }
-        private fun base(b:Float,s:Float,c:FloatArray,h:FloatArray,bel:FloatArray?=null){
-            part(0f,1.02f+b,.02f,.82f,s,.60f,c); part(0f,2.30f+b,-.02f,.68f,.68f*s,.57f,h)
-            if(bel!=null)part(0f,1.04f+b,-.58f,.50f,.68f,.15f,bel)
-            eye(-.23f,2.40f+b); eye(.23f,2.40f+b)
-            arm(-.76f,1.13f+b,c); arm(.76f,1.13f+b,c)
-            part(-.30f,.31f+b,0f,.28f,.55f,.28f,c); part(.30f,.31f+b,0f,.28f,.55f,.28f,c)
-            part(-.34f,-.17f+b,-.34f,.36f,.18f,.43f,c); part(.34f,-.17f+b,-.34f,.36f,.18f,.43f,c)
-        }
+    private class Renderer(var name:String):GLSurfaceView.Renderer{
+        var rotation=0f; private val p=FloatArray(16);private val v=FloatArray(16);private val m=FloatArray(16);private val mv=FloatArray(16);private val n=FloatArray(9);private val rot=FloatArray(16);private lateinit var mesh:Mesh;private var start=System.nanoTime()
+        override fun onSurfaceCreated(g:GL10?,c:EGLConfig?){GLES20.glClearColor(.006f,.018f,.032f,1f);GLES20.glEnable(GLES20.GL_DEPTH_TEST);GLES20.glEnable(GLES20.GL_CULL_FACE);mesh=Mesh();mesh.createProgram()}
+        override fun onSurfaceChanged(g:GL10?,w:Int,h:Int){GLES20.glViewport(0,0,w,h);Matrix.perspectiveM(p,0,38f,w.toFloat()/h,.1f,100f)}
+        override fun onDrawFrame(g:GL10?){GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT);val t=(System.nanoTime()-start)/1e9f;val bob=sin(t*2.1f)*.018f;val breathe=1f+sin(t*2.1f)*.012f;Matrix.setLookAtM(v,0,0f,1.52f,-7.6f,0f,1.42f,0f,0f,1f,0f);Matrix.setIdentityM(rot,0);Matrix.rotateM(rot,0,rotation,0f,1f,0f);when(name){"Gabumon"->gabumon(bob,breathe,t);"Agumon"->agumon(bob,breathe,t);"Patamon"->patamon(bob,breathe,t);"Gatomon"->gatomon(bob,breathe,t);"Tentomon"->tentomon(bob,breathe,t);"Gomamon"->gomamon(bob,breathe,t);"Palmon"->palmon(bob,breathe,t);"Biyomon"->biyomon(bob,breathe,t);"Veemon"->veemon(bob,breathe,t);"Wormmon"->wormmon(bob,breathe,t);"Guilmon"->guilmon(bob,breathe,t);"Renamon"->renamon(bob,breathe,t);else->gabumon(bob,breathe,t)}}
+        private fun base(b:Float,s:Float,c:FloatArray,h:FloatArray,bel:FloatArray?=null){part(0f,1.02f+b,.02f,.82f,s,.60f,c);part(0f,2.30f+b,-.02f,.68f,.68f*s,.57f,h);if(bel!=null)part(0f,1.04f+b,-.58f,.50f,.68f,.15f,bel);eye(-.23f,2.40f+b);eye(.23f,2.40f+b);arm(-.76f,1.13f+b,c);arm(.76f,1.13f+b,c);part(-.30f,.31f+b,0f,.28f,.55f,.28f,c);part(.30f,.31f+b,0f,.28f,.55f,.28f,c);part(-.34f,-.17f+b,-.34f,.36f,.18f,.43f,c);part(.34f,-.17f+b,-.34f,.36f,.18f,.43f,c)}
         private fun eye(x:Float,y:Float){part(x,y,-.61f,.105f,.14f,.055f,BLACK);part(x,y+.015f,-.665f,.052f,.08f,.014f,RED);part(x+.018f,y+.045f,-.681f,.017f,.024f,.008f,WHITE)}
         private fun arm(x:Float,y:Float,c:FloatArray){part(x,y,-.02f,.23f,.55f,.23f,c);part(x,.64f,-.28f,.24f,.21f,.24f,c);claw(x-.09f,.60f,-.50f);claw(x+.09f,.60f,-.50f)}
         private fun claw(x:Float,y:Float,z:Float){part(x,y,z,.05f,.12f,.06f,CLAW)}
@@ -73,17 +44,15 @@ class Digimon3DView(context: Context, initialDigimon: String = "Gabumon") : GLSu
         private fun wormmon(b:Float,s:Float,t:Float){base(b,s,GREEN,PALE,PALE);part(-.45f,2.86f+b,0f,.15f,.42f,.14f,GREEN);part(.45f,2.86f+b,0f,.15f,.42f,.14f,GREEN);part(0f,2.03f+b,-.66f,.11f,.06f,.03f,BLACK);part(0f,1.72f+b,.55f,.30f,.34f,.20f,GREEN)}
         private fun guilmon(b:Float,s:Float,t:Float){base(b,s,CRIMSON,CRIMSON,CREAM);part(-.50f,2.83f+b,0f,.18f,.38f,.16f,CRIMSON);part(.50f,2.83f+b,0f,.18f,.38f,.16f,CRIMSON);part(-.27f,2.15f+b,-.55f,.29f,.19f,.22f,CREAM);part(.27f,2.15f+b,-.55f,.29f,.19f,.22f,CREAM);part(0f,2f+b,-.75f,.11f,.06f,.03f,BLACK);tail(0f,1.15f+b,.60f,CRIMSON,.18f,t)}
         private fun renamon(b:Float,s:Float,t:Float){base(b,s,GOLDEN,GOLDEN,CREAM);part(-.42f,2.94f+b,0f,.12f,.57f,.12f,GOLDEN);part(.42f,2.94f+b,0f,.12f,.57f,.12f,GOLDEN);part(-.78f,2.64f+b,0f,.14f,.28f,.13f,GOLDEN);part(.78f,2.64f+b,0f,.14f,.28f,.13f,GOLDEN);part(0f,2.04f+b,-.66f,.09f,.05f,.025f,BLACK);part(-.88f,1.28f+b,.05f,.22f,.78f,.20f,GOLDEN);part(.88f,1.28f+b,.05f,.22f,.78f,.20f,GOLDEN);tail(.58f,1.05f+b,.52f,GOLDEN,.22f,t)}
-        private fun part(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float,c:FloatArray){Matrix.setIdentityM(model,0);Matrix.multiplyMM(model,0,rot,0,model,0);Matrix.translateM(model,0,x,y,z);Matrix.scaleM(model,0,sx,sy,sz);Matrix.multiplyMM(mvp,0,view,0,model,0);Matrix.multiplyMM(mvp,0,projection,0,mvp,0);normal[0]=rot[0];normal[1]=rot[1];normal[2]=rot[2];normal[3]=rot[4];normal[4]=rot[5];normal[5]=rot[6];normal[6]=rot[8];normal[7]=rot[9];normal[8]=rot[10];mesh.draw(mvp,normal,c[0],c[1],c[2])}
+        private fun part(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float,c:FloatArray){Matrix.setIdentityM(m,0);Matrix.multiplyMM(m,0,rot,0,m,0);Matrix.translateM(m,0,x,y,z);Matrix.scaleM(m,0,sx,sy,sz);Matrix.multiplyMM(mv,0,v,0,m,0);Matrix.multiplyMM(mv,0,p,0,mv,0);n[0]=rot[0];n[1]=rot[1];n[2]=rot[2];n[3]=rot[4];n[4]=rot[5];n[5]=rot[6];n[6]=rot[8];n[7]=rot[9];n[8]=rot[10];mesh.draw(mv,n,c[0],c[1],c[2])}
     }
 
-    private class Mesh {
-        private lateinit var vertices:FloatBuffer; private lateinit var indices:ShortBuffer; private var program=0; private var pos=0; private var mat=0; private var nmat=0; private var color=0; private var light=0
-        init { val rings=24; val segs=36; val v=ArrayList<Float>(); val q=ArrayList<Short>(); for(a in 0..rings){val ph=Math.PI*a/rings;val y=cos(ph).toFloat();val r=sin(ph).toFloat();for(b in 0 until segs){val th=2*Math.PI*b/segs;v.add((r*cos(th)).toFloat());v.add(y);v.add((r*sin(th)).toFloat())}};for(a in 0 until rings)for(b in 0 until segs){val i=(a*segs+b).toShort();val j=(a*segs+(b+1)%segs).toShort();val k=((a+1)*segs+b).toShort();val l=((a+1)*segs+(b+1)%segs).toShort();q.add(i);q.add(k);q.add(j);q.add(j);q.add(k);q.add(l)};vertices=ByteBuffer.allocateDirect(v.size*4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply{put(v.toFloatArray()).position(0)};indices=ByteBuffer.allocateDirect(q.size*2).order(ByteOrder.nativeOrder()).asShortBuffer().apply{put(q.toShortArray()).position(0)} }
-        fun createProgram(){val vs="attribute vec4 a;uniform mat4 m;uniform mat3 nmat;varying vec3 n;void main(){n=normalize(nmat*normalize(a.xyz));gl_Position=m*a;}";val fs="precision mediump float;uniform vec4 c;uniform vec3 light;varying vec3 n;void main(){vec3 nn=normalize(n);float d=max(dot(nn,normalize(light)),0.0);float rim=pow(1.0-max(dot(nn,vec3(0.,0.,1.)),0.),2.2);vec3 outc=c.rgb*(0.48+0.46*d)+c.rgb*0.08*rim;gl_FragColor=vec4(outc,1.);}";val vsh=shader(GLES20.GL_VERTEX_SHADER,vs);val fsh=shader(GLES20.GL_FRAGMENT_SHADER,fs);program=GLES20.glCreateProgram();GLES20.glAttachShader(program,vsh);GLES20.glAttachShader(program,fsh);GLES20.glLinkProgram(program);pos=GLES20.glGetAttribLocation(program,"a");mat=GLES20.glGetUniformLocation(program,"m");nmat=GLES20.glGetUniformLocation(program,"nmat");color=GLES20.glGetUniformLocation(program,"c");light=GLES20.glGetUniformLocation(program,"light")}
+    private class Mesh{
+        private lateinit var vertices:FloatBuffer;private lateinit var indices:ShortBuffer;private var program=0;private var pos=0;private var mat=0;private var nmat=0;private var color=0;private var light=0
+        init{val rings=32;val segs=48;val data=ArrayList<Float>();val idx=ArrayList<Short>();for(a in 0..rings){val ph=Math.PI*a/rings;val y=cos(ph).toFloat();val rr=sin(ph).toFloat();for(b in 0 until segs){val th=2*Math.PI*b/segs;data.add((rr*cos(th)).toFloat());data.add(y);data.add((rr*sin(th)).toFloat())}};for(a in 0 until rings)for(b in 0 until segs){val i=(a*segs+b).toShort();val j=(a*segs+(b+1)%segs).toShort();val k=((a+1)*segs+b).toShort();val l=((a+1)*segs+(b+1)%segs).toShort();idx.add(i);idx.add(k);idx.add(j);idx.add(j);idx.add(k);idx.add(l)};vertices=ByteBuffer.allocateDirect(data.size*4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply{put(data.toFloatArray()).position(0)};indices=ByteBuffer.allocateDirect(idx.size*2).order(ByteOrder.nativeOrder()).asShortBuffer().apply{put(idx.toShortArray()).position(0)}}
+        fun createProgram(){val vs="attribute vec4 a;uniform mat4 m;uniform mat3 nmat;varying vec3 n;varying vec3 pos3;void main(){n=normalize(nmat*normalize(a.xyz));pos3=a.xyz;gl_Position=m*a;}";val fs="precision mediump float;uniform vec4 c;uniform vec3 light;varying vec3 n;varying vec3 pos3;void main(){vec3 nn=normalize(n);vec3 ll=normalize(light);float d=max(dot(nn,ll),0.0);float toon=floor(d*4.0)/4.0;float rim=pow(1.0-max(dot(nn,vec3(0.,0.,1.)),0.),2.0);float grain=.94+.06*sin(pos3.x*38.0+pos3.y*31.0+pos3.z*27.0);vec3 base=c.rgb*grain*(0.42+0.58*toon);base+=c.rgb*.10*rim;float spec=pow(max(dot(reflect(-ll,nn),vec3(0.,0.,1.)),0.),32.0);base+=vec3(1.)*.06*spec;gl_FragColor=vec4(base,1.);}";val vsh=shader(GLES20.GL_VERTEX_SHADER,vs);val fsh=shader(GLES20.GL_FRAGMENT_SHADER,fs);program=GLES20.glCreateProgram();GLES20.glAttachShader(program,vsh);GLES20.glAttachShader(program,fsh);GLES20.glLinkProgram(program);pos=GLES20.glGetAttribLocation(program,"a");mat=GLES20.glGetUniformLocation(program,"m");nmat=GLES20.glGetUniformLocation(program,"nmat");color=GLES20.glGetUniformLocation(program,"c");light=GLES20.glGetUniformLocation(program,"light")}
         private fun shader(type:Int,src:String)=GLES20.glCreateShader(type).also{GLES20.glShaderSource(it,src);GLES20.glCompileShader(it)}
         fun draw(mvp:FloatArray,n:FloatArray,r:Float,g:Float,b:Float){GLES20.glUseProgram(program);GLES20.glEnableVertexAttribArray(pos);GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,12,vertices);GLES20.glUniformMatrix4fv(mat,1,false,mvp,0);GLES20.glUniformMatrix3fv(nmat,1,false,n,0);GLES20.glUniform4f(color,r,g,b,1f);GLES20.glUniform3f(light,-.45f,.85f,-.70f);GLES20.glDrawElements(GLES20.GL_TRIANGLES,indices.capacity(),GLES20.GL_UNSIGNED_SHORT,indices);GLES20.glDisableVertexAttribArray(pos)}
     }
-    companion object {
-        private val BLUE=floatArrayOf(.055f,.34f,.58f); private val PELT=floatArrayOf(.91f,.89f,.80f); private val ORANGE=floatArrayOf(1f,.48f,.06f); private val MUZZLE=floatArrayOf(.94f,.83f,.63f); private val GOLD=floatArrayOf(1f,.83f,.14f); private val YELLOW=floatArrayOf(1f,.72f,.07f); private val PINK=floatArrayOf(1f,.40f,.36f); private val BLACK=floatArrayOf(.012f,.012f,.016f); private val RED=floatArrayOf(.78f,.025f,.035f); private val WHITE=floatArrayOf(1f,1f,1f); private val STRIPE=floatArrayOf(.035f,.22f,.43f); private val CREAM=floatArrayOf(.92f,.84f,.69f); private val GREEN=floatArrayOf(.12f,.62f,.20f); private val PALE=floatArrayOf(.78f,.92f,.67f); private val PEACH=floatArrayOf(1f,.70f,.55f); private val VEEMON=floatArrayOf(.08f,.55f,.86f); private val CRIMSON=floatArrayOf(.76f,.06f,.06f); private val GOLDEN=floatArrayOf(.91f,.68f,.24f); private val CLAW=floatArrayOf(.72f,.025f,.025f)
-    }
+    companion object{private val BLUE=floatArrayOf(.055f,.34f,.58f);private val PELT=floatArrayOf(.91f,.89f,.80f);private val ORANGE=floatArrayOf(1f,.48f,.06f);private val MUZZLE=floatArrayOf(.94f,.83f,.63f);private val GOLD=floatArrayOf(1f,.83f,.14f);private val YELLOW=floatArrayOf(1f,.72f,.07f);private val PINK=floatArrayOf(1f,.40f,.36f);private val BLACK=floatArrayOf(.012f,.012f,.016f);private val RED=floatArrayOf(.78f,.025f,.035f);private val WHITE=floatArrayOf(1f,1f,1f);private val STRIPE=floatArrayOf(.035f,.22f,.43f);private val CREAM=floatArrayOf(.92f,.84f,.69f);private val GREEN=floatArrayOf(.12f,.62f,.20f);private val PALE=floatArrayOf(.78f,.92f,.67f);private val PEACH=floatArrayOf(1f,.70f,.55f);private val VEEMON=floatArrayOf(.08f,.55f,.86f);private val CRIMSON=floatArrayOf(.76f,.06f,.06f);private val GOLDEN=floatArrayOf(.91f,.68f,.24f);private val CLAW=floatArrayOf(.72f,.025f,.025f)}
 }
