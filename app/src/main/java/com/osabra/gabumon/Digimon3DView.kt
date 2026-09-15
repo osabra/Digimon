@@ -71,8 +71,9 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
 
             // Cabeza, mejillas y hocico.
             part(0f, 2.30f, 0f, .73f, .70f, .62f, PELT)
-            part(0f, 2.06f, -.57f, .43f, .30f, .31f, MUZZLE)
-            part(0f, 2.07f, -.87f, .115f, .085f, .07f, BLACK)
+            part(-.28f, 2.16f, -.54f, .30f, .23f, .25f, MUZZLE)
+            part(.28f, 2.16f, -.54f, .30f, .23f, .25f, MUZZLE)
+            part(0f, 2.08f, -.79f, .14f, .09f, .07f, BLACK)
 
             // Orejas azules con interior rosado.
             part(-.53f, 2.77f, .02f, .18f, .45f, .18f, BLUE)
@@ -88,11 +89,16 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
             part(0f, 2.91f, -.01f, .13f, .32f, .12f, GOLD)
             part(0f, 3.16f, -.01f, .072f, .18f, .066f, YELLOW)
 
-            // Capucha/piel blanca: varias piezas superpuestas para una silueta de pelaje.
+            // Piel de Gabumon, escalonada para una silueta más cercana a una piel real.
             part(0f, 1.90f, .43f, .69f, .76f, .27f, PELT)
             part(-.58f, 1.70f, .40f, .30f, .64f, .25f, PELT)
             part(.58f, 1.70f, .40f, .30f, .64f, .25f, PELT)
             part(0f, 2.32f, .43f, .58f, .48f, .24f, PELT)
+            tuft(-.30f, 2.02f, .58f, .23f, .15f, .10f)
+            tuft(.30f, 2.02f, .58f, .23f, .15f, .10f)
+            tuft(-.47f, 1.72f, .55f, .20f, .13f, .10f)
+            tuft(.47f, 1.72f, .55f, .20f, .13f, .10f)
+            tuft(0f, 1.48f, .57f, .28f, .13f, .10f)
 
             // Rayas azules características.
             stripe(-.60f, 2.04f, .46f, .30f, .075f, .27f)
@@ -114,9 +120,10 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
             claw(-.53f, -.28f, -.68f); claw(-.38f, -.30f, -.72f)
             claw(.38f, -.30f, -.72f); claw(.53f, -.28f, -.68f)
 
-            // Cola curvada hacia atrás.
+            // Cola redondeada hacia atrás.
             part(.91f, 1.14f, .43f, .23f, .25f, .72f, BLUE)
             part(1.20f, 1.30f, .72f, .27f, .26f, .42f, BLUE)
+            part(1.40f, 1.45f, .96f, .20f, .20f, .27f, BLUE)
         }
 
         private fun eye(x: Float) {
@@ -134,6 +141,9 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
 
         private fun stripe(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float) =
             part(x, y, z, sx, sy, sz, STRIPE)
+
+        private fun tuft(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float) =
+            part(x, y, z, sx, sy, sz, PELT_HIGHLIGHT)
 
         private fun claw(x: Float, y: Float, z: Float) =
             part(x, y, z, .052f, .13f, .075f, CLAW)
@@ -192,9 +202,7 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
                 attribute vec4 p;
                 uniform mat4 m;
                 varying vec3 n;
-                varying vec3 pos3;
                 void main(){
-                    pos3=p.xyz;
                     n=normalize(p.xyz);
                     gl_Position=m*p;
                 }
@@ -204,13 +212,14 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
                 uniform vec4 c;
                 uniform vec3 light;
                 varying vec3 n;
-                varying vec3 pos3;
                 void main(){
                     float d=max(dot(normalize(n),normalize(light)),0.0);
                     float rim=pow(1.0-max(dot(normalize(n),vec3(0.0,0.0,1.0)),0.0),2.0);
-                    vec3 base=c.rgb*(0.48+0.52*d);
-                    base += c.rgb*0.10*rim;
-                    gl_FragColor=vec4(base, c.a);
+                    float spec=pow(max(dot(reflect(-normalize(light),normalize(n)),vec3(0.0,0.0,1.0)),0.0),20.0);
+                    vec3 base=c.rgb*(0.44+0.56*d);
+                    base += c.rgb*0.08*rim;
+                    base += vec3(1.0)*0.06*spec;
+                    gl_FragColor=vec4(base,c.a);
                 }
             """.trimIndent()
             val a = sh(GLES20.GL_VERTEX_SHADER, vs)
@@ -245,6 +254,7 @@ class Digimon3DView(context: Context) : GLSurfaceView(context) {
     companion object {
         private val BLUE = floatArrayOf(.055f, .34f, .58f)
         private val PELT = floatArrayOf(.91f, .89f, .80f)
+        private val PELT_HIGHLIGHT = floatArrayOf(.98f, .96f, .88f)
         private val MUZZLE = floatArrayOf(.94f, .83f, .63f)
         private val BELLY = floatArrayOf(1f, .67f, .055f)
         private val YELLOW = floatArrayOf(1f, .72f, .07f)
