@@ -14,133 +14,71 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Stylized 3D Gabumon-inspired companion. Front-facing by default; drag horizontally to rotate. */
+/** Mobile-friendly stylized 3D companion. The entire character rotates as one piece. */
 class Digimon3DView(context: Context) : GLSurfaceView(context) {
     private val renderer = Renderer()
     private var lastX = 0f
-    init {
-        setEGLContextClientVersion(2)
-        setRenderer(renderer)
-        renderMode = RENDERMODE_CONTINUOUSLY
-    }
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { lastX = event.x; return true }
-            MotionEvent.ACTION_MOVE -> {
-                renderer.rotation += (event.x - lastX) * 0.45f
-                lastX = event.x
-                return true
-            }
+    init { setEGLContextClientVersion(2); setRenderer(renderer); renderMode = RENDERMODE_CONTINUOUSLY }
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { lastX=e.x; return true }
+            MotionEvent.ACTION_MOVE -> { renderer.rotation += (e.x-lastX)*0.45f; lastX=e.x; return true }
         }
         return true
     }
-
     private class Renderer : GLSurfaceView.Renderer {
-        var rotation = 0f
-        private var start = System.nanoTime()
-        private val projection = FloatArray(16)
-        private val view = FloatArray(16)
-        private val model = FloatArray(16)
-        private val mvp = FloatArray(16)
-        private lateinit var mesh: Mesh
-
-        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-            GLES20.glClearColor(.015f, .04f, .065f, 1f)
-            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
-            GLES20.glEnable(GLES20.GL_CULL_FACE)
-            mesh = Mesh()
-            mesh.createProgram()
-        }
-        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-            GLES20.glViewport(0, 0, width, height)
-            Matrix.perspectiveM(projection, 0, 42f, width.toFloat() / height.toFloat(), .1f, 100f)
-        }
-        override fun onDrawFrame(gl: GL10?) {
+        var rotation=0f
+        private var start=System.nanoTime()
+        private val projection=FloatArray(16); private val view=FloatArray(16); private val model=FloatArray(16); private val mvp=FloatArray(16)
+        private lateinit var mesh:Mesh
+        override fun onSurfaceCreated(gl:GL10?,c:EGLConfig?){GLES20.glClearColor(.015f,.04f,.065f,1f);GLES20.glEnable(GLES20.GL_DEPTH_TEST);mesh=Mesh();mesh.program()}
+        override fun onSurfaceChanged(gl:GL10?,w:Int,h:Int){GLES20.glViewport(0,0,w,h);Matrix.perspectiveM(projection,0,42f,w.toFloat()/h.toFloat(),.1f,100f)}
+        override fun onDrawFrame(gl:GL10?){
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-            val t = (System.nanoTime() - start) / 1_000_000_000f
-            val breathe = 1f + sin(t * 2.2f) * .018f
-            // The face is on the negative-Z side, so the camera must look from negative Z.
-            Matrix.setLookAtM(view, 0, 0f, 1.55f, -7.0f, 0f, 1.45f, 0f, 1f, 0f, 0f)
-
-            part(0f, 1.16f, .05f, 1.02f, 1.16f * breathe, .78f, .10f, .42f, .63f)
-            part(0f, 1.12f, -.68f, .67f, .84f * breathe, .18f, .93f, .82f, .48f)
-            part(0f, 2.38f, -.03f, .81f, .78f, .72f, .88f, .90f, .86f)
-            part(0f, 2.10f, -.65f, .46f, .31f, .31f, .94f, .86f, .70f)
-            part(0f, 2.12f, -.94f, .13f, .10f, .09f, .025f, .025f, .025f)
-
-            part(-.58f, 2.82f, -.01f, .20f, .51f, .20f, .12f, .40f, .61f)
-            part(.58f, 2.82f, -.01f, .20f, .51f, .20f, .12f, .40f, .61f)
-            part(-.58f, 2.83f, -.20f, .09f, .31f, .07f, .93f, .68f, .50f)
-            part(.58f, 2.83f, -.20f, .09f, .31f, .07f, .93f, .68f, .50f)
-
-            part(-.25f, 2.42f, -.69f, .105f, .13f, .075f, .07f, .025f, .025f)
-            part(.25f, 2.42f, -.69f, .105f, .13f, .075f, .07f, .025f, .025f)
-            part(-.25f, 2.43f, -.755f, .060f, .085f, .030f, .55f, .08f, .06f)
-            part(.25f, 2.43f, -.755f, .060f, .085f, .030f, .55f, .08f, .06f)
-            part(-.22f, 2.48f, -.785f, .022f, .028f, .015f, 1f, 1f, 1f)
-            part(.28f, 2.48f, -.785f, .022f, .028f, .015f, 1f, 1f, 1f)
-
-            part(0f, 2.91f, -.02f, .14f, .37f, .14f, .94f, .68f, .13f)
-            part(0f, 3.19f, -.02f, .08f, .22f, .08f, .98f, .78f, .18f)
-
-            // Pelt is positioned behind the face and wraps around the shoulders.
-            part(0f, 2.00f, .49f, .72f, .82f, .28f, .93f, .90f, .82f)
-            part(-.63f, 1.72f, .43f, .33f, .72f, .28f, .94f, .91f, .83f)
-            part(.63f, 1.72f, .43f, .33f, .72f, .28f, .94f, .91f, .83f)
-            stripe(-.63f, 2.05f, .48f, .34f, .10f, .30f)
-            stripe(.63f, 2.05f, .48f, .34f, .10f, .30f)
-            stripe(-.78f, 1.70f, .42f, .28f, .10f, .27f)
-            stripe(.78f, 1.70f, .42f, .28f, .10f, .27f)
-            stripe(-.84f, 1.38f, -.01f, .24f, .11f, .30f)
-            stripe(.84f, 1.38f, -.01f, .24f, .11f, .30f)
-
-            part(-.83f, 1.25f, -.02f, .25f, .65f, .28f, .10f, .42f, .63f)
-            part(.83f, 1.25f, -.02f, .25f, .65f, .28f, .10f, .42f, .63f)
-            part(-.84f, .73f, -.25f, .27f, .23f, .31f, .94f, .88f, .73f)
-            part(.84f, .73f, -.25f, .27f, .23f, .31f, .94f, .88f, .73f)
-            claw(-.98f, .67f, -.49f); claw(-.80f, .63f, -.52f); claw(.98f, .67f, -.49f); claw(.80f, .63f, -.52f)
-
-            part(-.38f, .22f, -.02f, .31f, .66f, .35f, .10f, .42f, .63f)
-            part(.38f, .22f, -.02f, .31f, .66f, .35f, .10f, .42f, .63f)
-            part(-.40f, -.24f, -.34f, .38f, .19f, .54f, .94f, .88f, .73f)
-            part(.40f, -.24f, -.34f, .38f, .19f, .54f, .94f, .88f, .73f)
-            claw(-.58f, -.27f, -.72f); claw(-.39f, -.29f, -.76f); claw(.39f, -.29f, -.76f); claw(.58f, -.27f, -.72f)
-
-            part(-1.02f, 1.28f, .52f, .25f, .25f, .92f, .10f, .42f, .63f)
-            part(-1.22f, 1.55f, .88f, .31f, .31f, .50f, .94f, .70f, .16f)
-            part(0f, 1.70f, .78f, .48f, .66f, .18f, .94f, .70f, .16f)
+            val t=(System.nanoTime()-start)/1_000_000_000f; val breathe=1f+sin(t*2.2f)*.015f
+            // Face is on negative Z; camera is placed on that side.
+            Matrix.setLookAtM(view,0,0f,1.55f,-7f,0f,1.45f,0f,0f,1f,0f)
+            // Body
+            p(0f,1.15f,.05f,1.0f,1.15f*breathe,.75f,.08f,.38f,.62f)
+            p(0f,1.10f,-.67f,.65f,.82f*breathe,.16f,.94f,.80f,.45f)
+            // Head and muzzle
+            p(0f,2.38f,0f,.78f,.76f,.68f,.86f,.88f,.84f)
+            p(0f,2.10f,-.64f,.45f,.30f,.30f,.95f,.86f,.70f)
+            p(0f,2.10f,-.93f,.13f,.09f,.08f,.03f,.03f,.03f)
+            // Ears
+            p(-.56f,2.82f,0f,.20f,.50f,.19f,.10f,.38f,.60f); p(.56f,2.82f,0f,.20f,.50f,.19f,.10f,.38f,.60f)
+            p(-.56f,2.83f,-.19f,.09f,.30f,.06f,.90f,.65f,.48f); p(.56f,2.83f,-.19f,.09f,.30f,.06f,.90f,.65f,.48f)
+            // Eyes
+            p(-.25f,2.40f,-.68f,.105f,.13f,.07f,.02f,.02f,.025f); p(.25f,2.40f,-.68f,.105f,.13f,.07f,.02f,.02f,.025f)
+            p(-.25f,2.42f,-.755f,.055f,.08f,.025f,.55f,.08f,.06f); p(.25f,2.42f,-.755f,.055f,.08f,.025f,.55f,.08f,.06f)
+            p(-.22f,2.47f,-.785f,.02f,.025f,.012f,1f,1f,1f); p(.28f,2.47f,-.785f,.02f,.025f,.012f,1f,1f,1f)
+            // Yellow crest
+            p(0f,2.93f,-.01f,.14f,.38f,.13f,.95f,.68f,.10f); p(0f,3.20f,-.01f,.075f,.20f,.07f,1f,.78f,.15f)
+            // Pelt / mantle behind the face
+            p(0f,1.98f,.48f,.72f,.82f,.27f,.92f,.89f,.80f); p(-.63f,1.70f,.42f,.32f,.70f,.27f,.94f,.91f,.82f); p(.63f,1.70f,.42f,.32f,.70f,.27f,.94f,.91f,.82f)
+            stripe(-.63f,2.03f,.47f,.33f,.09f,.29f); stripe(.63f,2.03f,.47f,.33f,.09f,.29f); stripe(-.78f,1.69f,.40f,.27f,.09f,.25f); stripe(.78f,1.69f,.40f,.27f,.09f,.25f)
+            // Arms and legs
+            p(-.82f,1.20f,0f,.25f,.63f,.27f,.08f,.38f,.62f); p(.82f,1.20f,0f,.25f,.63f,.27f,.08f,.38f,.62f)
+            p(-.38f,.25f,0f,.31f,.64f,.34f,.08f,.38f,.62f); p(.38f,.25f,0f,.31f,.64f,.34f,.08f,.38f,.62f)
+            p(-.40f,-.22f,-.32f,.38f,.20f,.52f,.94f,.86f,.70f); p(.40f,-.22f,-.32f,.38f,.20f,.52f,.94f,.86f,.70f)
+            claw(-.90f,.62f,-.48f); claw(-.76f,.60f,-.50f); claw(.90f,.62f,-.48f); claw(.76f,.60f,-.50f)
+            claw(-.55f,-.27f,-.70f); claw(-.39f,-.29f,-.73f); claw(.39f,-.29f,-.73f); claw(.55f,-.27f,-.70f)
+            // Tail
+            p(-1.02f,1.25f,.45f,.24f,.24f,.88f,.08f,.38f,.62f)
         }
-
-        private fun stripe(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float) = part(x,y,z,sx,sy,sz,.08f,.35f,.60f)
-        private fun claw(x:Float,y:Float,z:Float) = part(x,y,z,.055f,.14f,.09f,.72f,.05f,.05f)
-
-        private fun part(x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float, r: Float, g: Float, b: Float) {
-            Matrix.setIdentityM(model, 0)
-            Matrix.translateM(model, 0, x, y, z)
-            Matrix.rotateM(model, 0, rotation, 0f, 1f, 0f)
-            Matrix.scaleM(model, 0, sx, sy, sz)
-            Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
-            Matrix.multiplyMM(mvp, 0, projection, 0, mvp, 0)
-            mesh.draw(mvp, r, g, b)
+        private fun stripe(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float)=p(x,y,z,sx,sy,sz,.07f,.32f,.58f)
+        private fun claw(x:Float,y:Float,z:Float)=p(x,y,z,.055f,.13f,.085f,.72f,.04f,.04f)
+        private fun p(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float,r:Float,g:Float,b:Float){
+            // Global rotation first, then local placement: this prevents the body parts from orbiting individually.
+            Matrix.setIdentityM(model,0); Matrix.rotateM(model,0,rotation,0f,1f,0f); Matrix.translateM(model,0,x,y,z); Matrix.scaleM(model,0,sx,sy,sz)
+            Matrix.multiplyMM(mvp,0,view,0,model,0); Matrix.multiplyMM(mvp,0,projection,0,mvp,0); mesh.draw(mvp,r,g,b)
         }
     }
-
     private class Mesh {
-        private lateinit var vertices: FloatBuffer
-        private lateinit var indices: ShortBuffer
-        private var program = 0
-        private var positionHandle = 0
-        private var mvpHandle = 0
-        private var colorHandle = 0
-        init {
-            val stacks = 20; val slices = 28; val data = ArrayList<Float>()
-            for (i in 0..stacks) { val v=i.toFloat()/stacks; val phi=Math.PI*v; val y=cos(phi).toFloat(); val ring=sin(phi).toFloat(); for(j in 0 until slices){val theta=2.0*Math.PI*j/slices; data += (ring*cos(theta)).toFloat(); data += y; data += (ring*sin(theta)).toFloat()} }
-            val idx=ArrayList<Short>(); for(i in 0 until stacks) for(j in 0 until slices){val a=(i*slices+j).toShort(); val b=(i*slices+(j+1)%slices).toShort(); val c=((i+1)*slices+j).toShort(); val d=((i+1)*slices+(j+1)%slices).toShort(); idx+=a;idx+=c;idx+=b;idx+=b;idx+=c;idx+=d}
-            vertices=ByteBuffer.allocateDirect(data.size*4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply{put(data.toFloatArray()).position(0)}
-            indices=ByteBuffer.allocateDirect(idx.size*2).order(ByteOrder.nativeOrder()).asShortBuffer().apply{put(idx.toShortArray()).position(0)}
-        }
-        fun createProgram(){val vs="attribute vec4 vPosition; uniform mat4 uMVP; void main(){gl_Position=uMVP*vPosition;}"; val fs="precision mediump float; uniform vec4 uColor; void main(){gl_FragColor=uColor;}"; val v=shader(GLES20.GL_VERTEX_SHADER,vs); val f=shader(GLES20.GL_FRAGMENT_SHADER,fs); program=GLES20.glCreateProgram();GLES20.glAttachShader(program,v);GLES20.glAttachShader(program,f);GLES20.glLinkProgram(program);GLES20.glDeleteShader(v);GLES20.glDeleteShader(f);positionHandle=GLES20.glGetAttribLocation(program,"vPosition");mvpHandle=GLES20.glGetUniformLocation(program,"uMVP");colorHandle=GLES20.glGetUniformLocation(program,"uColor")}
-        private fun shader(type:Int,source:String):Int=GLES20.glCreateShader(type).also{GLES20.glShaderSource(it,source);GLES20.glCompileShader(it)}
-        fun draw(matrix:FloatArray,r:Float,g:Float,b:Float){if(program==0)return;GLES20.glUseProgram(program);vertices.position(0);indices.position(0);GLES20.glEnableVertexAttribArray(positionHandle);GLES20.glVertexAttribPointer(positionHandle,3,GLES20.GL_FLOAT,false,12,vertices);GLES20.glUniformMatrix4fv(mvpHandle,1,false,matrix,0);GLES20.glUniform4f(colorHandle,r,g,b,1f);GLES20.glDrawElements(GLES20.GL_TRIANGLES,indices.capacity(),GLES20.GL_UNSIGNED_SHORT,indices);GLES20.glDisableVertexAttribArray(positionHandle)}
+        private lateinit var v:FloatBuffer; private lateinit var i:ShortBuffer; private var prog=0; private var pos=0; private var mat=0; private var col=0
+        init { val stacks=18; val slices=24; val d=ArrayList<Float>(); for(a in 0..stacks){val ph=Math.PI*a/stacks; val yy=cos(ph).toFloat(); val rr=sin(ph).toFloat(); for(b in 0 until slices){val th=2*Math.PI*b/slices; d+=(rr*cos(th)).toFloat(); d+=yy; d+=(rr*sin(th)).toFloat()}}; val q=ArrayList<Short>(); for(a in 0 until stacks)for(b in 0 until slices){val x=(a*slices+b).toShort();val y=(a*slices+(b+1)%slices).toShort();val z=((a+1)*slices+b).toShort();val w=((a+1)*slices+(b+1)%slices).toShort();q+=x;q+=z;q+=y;q+=y;q+=z;q+=w};v=ByteBuffer.allocateDirect(d.size*4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply{put(d.toFloatArray()).position(0)};i=ByteBuffer.allocateDirect(q.size*2).order(ByteOrder.nativeOrder()).asShortBuffer().apply{put(q.toShortArray()).position(0)} }
+        fun program(){val vs="attribute vec4 p;uniform mat4 m;void main(){gl_Position=m*p;}";val fs="precision mediump float;uniform vec4 c;void main(){gl_FragColor=c;}";val a=sh(GLES20.GL_VERTEX_SHADER,vs);val b=sh(GLES20.GL_FRAGMENT_SHADER,fs);prog=GLES20.glCreateProgram();GLES20.glAttachShader(prog,a);GLES20.glAttachShader(prog,b);GLES20.glLinkProgram(prog);pos=GLES20.glGetAttribLocation(prog,"p");mat=GLES20.glGetUniformLocation(prog,"m");col=GLES20.glGetUniformLocation(prog,"c")}
+        private fun sh(t:Int,s:String)=GLES20.glCreateShader(t).also{GLES20.glShaderSource(it,s);GLES20.glCompileShader(it)}
+        fun draw(m:FloatArray,r:Float,g:Float,b:Float){GLES20.glUseProgram(prog);GLES20.glEnableVertexAttribArray(pos);GLES20.glVertexAttribPointer(pos,3,GLES20.GL_FLOAT,false,12,v);GLES20.glUniformMatrix4fv(mat,1,false,m,0);GLES20.glUniform4f(col,r,g,b,1f);GLES20.glDrawElements(GLES20.GL_TRIANGLES,i.capacity(),GLES20.GL_UNSIGNED_SHORT,i);GLES20.glDisableVertexAttribArray(pos)}
     }
 }
