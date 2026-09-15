@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Gabumon" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#10141A</item>
+        <item name="android:navigationBarColor">#10141A</item>
+    </style>
+</resources>
