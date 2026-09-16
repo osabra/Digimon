@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install 3D generator
-        run: python -m pip install trimesh numpy pygltflib
+        run: python -m pip install trimesh numpy scipy pygltflib
       - name: Generate high quality GLB files
         run: python tools/generate_digimon_glb.py
       - name: Commit generated assets
