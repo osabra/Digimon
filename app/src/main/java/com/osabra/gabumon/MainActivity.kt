@@ -161,7 +161,7 @@ fun Selector(index: Int, setIndex: (Int) -> Unit, choose: () -> Unit) {
         Spacer(Modifier.height(18.dp))
         Card(Modifier.fillMaxWidth().weight(1f), shape = RoundedCornerShape(28.dp)) {
             AndroidView(
-                factory = { Digimon3DView(it, d.name) },
+                factory = { DigimonModelView(it, d.name) },
                 update = { it.setDigimon(d.name) },
                 modifier = Modifier.fillMaxSize()
             )
@@ -193,7 +193,8 @@ private fun Companion(d: Digimon, onBack: () -> Unit) {
             fontWeight = FontWeight.Bold
         )
         AndroidView(
-            factory = { Digimon3DView(it, d.name) },
+            factory = { DigimonModelView(it, d.name) },
+            update = { it.setDigimon(d.name) },
             modifier = Modifier.fillMaxWidth().weight(1f).padding(vertical = 12.dp)
         )
         Text("Arrastra para girar", Modifier.align(Alignment.CenterHorizontally), color = Color.LightGray)
