@@ -3,7 +3,6 @@ on:
   push:
     paths:
       - 'tools/generate_digimon_glb.py'
-      - 'tools/generate_biyomon_glb.py'
       - '.github/workflows/generate-glb-assets.yml'
 permissions:
   contents: write
@@ -17,15 +16,13 @@ jobs:
           python-version: '3.11'
       - name: Install 3D generator
         run: python -m pip install trimesh numpy pygltflib
-      - name: Generate GLB files
-        run: |
-          python tools/generate_digimon_glb.py
-          python tools/generate_biyomon_glb.py
+      - name: Generate high quality GLB files
+        run: python tools/generate_digimon_glb.py
       - name: Commit generated assets
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/src/main/assets/digimon/*.glb
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Fix Biyomon 3D GLB model'
+          git commit -m 'Improve all Digimon 3D models'
           git push
