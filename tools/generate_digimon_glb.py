@@ -23,7 +23,7 @@ def add(scene, mesh, mat):
     scene.add_geometry(mesh)
 
 
-def uv(scene, radius, pos, mat, scale=(1, 1, 1), seg=24, rings=16):
+def uv(scene, radius, pos, mat, scale=(1, 1, 1), seg=32, rings=20):
     m = trimesh.creation.uv_sphere(radius=radius, count=[seg, rings])
     m.apply_scale(scale)
     m.apply_translation(pos)
@@ -31,10 +31,8 @@ def uv(scene, radius, pos, mat, scale=(1, 1, 1), seg=24, rings=16):
     return m
 
 
-def box(scene, extents, pos, mat, rot=None, bevel=0.0):
+def box(scene, extents, pos, mat, rot=None):
     m = trimesh.creation.box(extents=extents)
-    if bevel:
-        m = m.subdivide().subdivide()
     if rot:
         m.apply_transform(trimesh.transformations.euler_matrix(*rot))
     m.apply_translation(pos)
@@ -43,18 +41,22 @@ def box(scene, extents, pos, mat, rot=None, bevel=0.0):
 
 
 def cyl(scene, radius, height, pos, mat, axis='y'):
-    m = trimesh.creation.cylinder(radius=radius, height=height, sections=24)
-    if axis == 'x': m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
-    if axis == 'z': m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
+    m = trimesh.creation.cylinder(radius=radius, height=height, sections=32)
+    if axis == 'x':
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+    if axis == 'z':
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
     m.apply_translation(pos)
     add(scene, m, mat)
     return m
 
 
 def cone(scene, r1, r2, h, pos, mat, axis='y'):
-    m = trimesh.creation.conical_frustum(radius1=r1, radius2=r2, height=h, sections=24)
-    if axis == 'x': m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
-    if axis == 'z': m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
+    m = trimesh.creation.conical_frustum(radius1=r1, radius2=r2, height=h, sections=32)
+    if axis == 'x':
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
+    if axis == 'z':
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [1, 0, 0]))
     m.apply_translation(pos)
     add(scene, m, mat)
     return m
@@ -62,9 +64,14 @@ def cone(scene, r1, r2, h, pos, mat, axis='y'):
 
 def eye_pair(s, y, z, iris='red', size=.115):
     for x in (-.205, .205):
-        uv(s, size, (x, y, z), 'black', (1, 1, 1.05), 20, 14)
+        uv(s, size, (x, y, z), 'black', (1, 1, 1.05), 24, 16)
         uv(s, size * .52, (x, y - .018, z - .055), iris, (1, 1, 1), 20, 14)
         uv(s, size * .18, (x - .025, y - .035, z - .075), 'white', (1, 1, 1), 16, 10)
+
+
+def patch(s, pos, scale, mat='blue', rot=(0, 0, 0)):
+    # A very shallow rounded patch used for Gabumon's painted/fur markings.
+    uv(s, 1.0, pos, mat, scale, 28, 18)
 
 
 def normalize(s):
@@ -75,25 +82,60 @@ def normalize(s):
 
 def gabumon():
     s = trimesh.Scene()
-    # Blue body underneath the pelt.
-    uv(s, .62, (0, .82, 0), 'blue', (1.0, 1.28, .82))
-    uv(s, .70, (0, 1.70, 0), 'cream', (1.0, 1.0, .92))
-    # Characteristic striped fur pelt on head and torso.
-    uv(s, .50, (0, 1.22, -.33), 'cream', (1.0, .95, .55))
-    for x, z, sc in [(-.38,-.33,.9),(-.18,-.38,.72),(.18,-.38,.72),(.38,-.33,.9)]:
-        box(s, (.10, .48, .035), (x, 1.40, z), 'blue', rot=(0, 0, (-.22 if x < 0 else .22)))
-    # Ears, horn, muzzle and nose.
-    uv(s, .27, (-.54, 1.88, -.02), 'blue', (.65, 1.0, .45)); uv(s, .27, (.54, 1.88, -.02), 'blue', (.65, 1.0, .45))
-    uv(s, .15, (-.55, 1.88, -.18), 'pink', (.55, 1, .45)); uv(s, .15, (.55, 1.88, -.18), 'pink', (.55, 1, .45))
-    cone(s, .17, .08, .48, (0, 2.42, 0), 'yellow')
-    uv(s, .22, (-.25, 1.52, -.57), 'cream', (1.25, .75, .7)); uv(s, .22, (.25, 1.52, -.57), 'cream', (1.25, .75, .7))
-    uv(s, .10, (0, 1.49, -.75), 'black', (1.2, .7, .65))
-    eye_pair(s, 1.74, -.57, 'red', .125)
-    # Arms, feet and claws.
-    for x in (-.56, .56):
-        uv(s, .24, (x, .78, -.03), 'blue', (.8, 1.25, .85)); uv(s, .20, (x, .40, -.27), 'blue', (1.15, .65, 1.0))
-        for dx in (-.07, 0, .07): cone(s, .045, .012, .16, (x + dx, .37, -.40), 'white')
-    normalize(s); return s
+
+    # Blue reptilian body: shorter torso, broad shoulders and compact feet.
+    uv(s, .58, (0, .78, 0), 'blue', (1.02, 1.18, .78))
+    uv(s, .43, (0, 1.18, -.02), 'blue', (1.05, .72, .82))
+
+    # Distinctive cream pelt, separated from the blue body so it remains readable
+    # from every rotation angle instead of becoming a featureless blob.
+    uv(s, .61, (0, 1.66, -.01), 'cream', (1.00, 1.00, .84))
+    uv(s, .47, (0, 1.13, -.37), 'cream', (1.05, .90, .58))
+
+    # Characteristic blue markings on the pelt/head. They sit just above the
+    # surface and are intentionally repeated on front and sides for 360-degree view.
+    for x, y, sx, sy, sz in [
+        (-.31, 1.82, .105, .28, .045), (-.17, 1.94, .09, .34, .045),
+        (.17, 1.94, .09, .34, .045), (.31, 1.82, .105, .28, .045),
+        (-.40, 1.45, .10, .34, .05), (-.22, 1.36, .10, .42, .05),
+        (.22, 1.36, .10, .42, .05), (.40, 1.45, .10, .34, .05),
+    ]:
+        patch(s, (x, y, -.585 if y > 1.6 else -.455), (sx, sy, sz), 'blue')
+
+    # Side/back pelt markings prevent the model from looking blank when rotated.
+    for side in (-1, 1):
+        for y, z, sy, sz in [(1.73, -.18, .30, .04), (1.50, -.20, .26, .04), (1.27, -.23, .22, .04)]:
+            patch(s, (side * .505, y, z), (.045, sy, sz), 'blue')
+
+    # Large rounded ears, inner pink, and the single horn.
+    for x in (-.53, .53):
+        uv(s, .25, (x, 1.90, -.01), 'blue', (.62, 1.15, .46))
+        uv(s, .145, (x, 1.90, -.235), 'pink', (.62, 1.10, .38))
+    cone(s, .17, .075, .43, (0, 2.38, -.01), 'yellow')
+
+    # Muzzle, nose and eyes with the familiar large anime proportions.
+    uv(s, .225, (-.235, 1.55, -.64), 'cream', (1.28, .72, .66))
+    uv(s, .225, (.235, 1.55, -.64), 'cream', (1.28, .72, .66))
+    uv(s, .10, (0, 1.49, -.78), 'black', (1.25, .68, .58))
+    eye_pair(s, 1.80, -.60, 'red', .125)
+
+    # Short arms with rounded hands and three visible white claws.
+    for x in (-.58, .58):
+        uv(s, .235, (x, .82, -.02), 'blue', (.78, 1.20, .82))
+        uv(s, .19, (x, .43, -.30), 'blue', (1.15, .68, .95))
+        for dx in (-.075, 0, .075):
+            cone(s, .043, .010, .17, (x + dx, .37, -.43), 'white')
+
+    # Feet are wide and rounded, matching the compact anime silhouette.
+    for x in (-.27, .27):
+        uv(s, .25, (x, .20, -.22), 'blue', (1.20, .62, 1.28))
+        for dx in (-.075, 0, .075):
+            cone(s, .043, .010, .14, (x + dx, .17, -.39), 'white')
+
+    # Small tail visible in side/back rotations.
+    uv(s, .19, (0, .70, .56), 'blue', (.72, .72, 1.75))
+    normalize(s)
+    return s
 
 
 def agumon():
@@ -110,7 +152,6 @@ def agumon():
 def renamon():
     s=trimesh.Scene(); uv(s,.56,(0,.90,0),'yellow',(1,.98,.70)); uv(s,.60,(0,1.75,0),'yellow',(1,.95,.82))
     uv(s,.28,(0,1.25,-.48),'cream',(1,.9,.55)); eye_pair(s,1.78,-.53,'red',.105)
-    # Tall ears and purple tips, long arms/legs and tail.
     for x in (-.30,.30): cone(s,.16,.06,.72,(x,2.45,0),'yellow'); cone(s,.12,.025,.25,(x,2.78,0),'purple')
     for x in (-.48,.48): uv(s,.17,(x,1.10,0),'yellow',(.7,1.7,.7)); uv(s,.18,(x,.30,-.22),'yellow',(1.0,.65,1.25))
     uv(s,.22,(0,.70,.55),'purple',(.75,.7,2.3))
@@ -135,6 +176,7 @@ def generic(name, body, accent, wing=False, horn=True):
     if wing:
         uv(s,.38,(-.62,1.22,.05),accent,(.55,1.5,.25)); uv(s,.38,(.62,1.22,.05),accent,(.55,1.5,.25))
     uv(s,.20,(0,1.23,-.57),accent,(1.2,.5,.35)); normalize(s); return s
+
 
 BUILDERS = {
     'Gabumon': gabumon,
