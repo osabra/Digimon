@@ -15,18 +15,53 @@ NAMES = [
 def improve_mesh(mesh):
     if not isinstance(mesh, trimesh.Trimesh):
         return mesh
-    mesh.remove_duplicate_faces()
-    mesh.remove_degenerate_faces()
+
+    # trimesh 4.x removed the old remove_*_faces helpers. Use the current
+    # update_faces API, while retaining compatibility with older trimesh.
+    try:
+        mesh.update_faces(mesh.unique_faces())
+    except (AttributeError, TypeError):
+        try:
+            mesh.remove_duplicate_faces()
+        except AttributeError:
+            pass
+
+    try:
+        mesh.update_faces(mesh.nondegenerate_faces())
+    except (AttributeError, TypeError):
+        try:
+            mesh.remove_degenerate_faces()
+        except AttributeError:
+            pass
+
     mesh.merge_vertices()
     mesh.process(validate=True)
+
     # Two conservative iterations reduce visible faceting while preserving the
     # silhouette and the intentionally stylised anime proportions.
     try:
-        trimesh.smoothing.filter_taubin(mesh, lamb=0.28, nu=0.30, iterations=2)
+        trimesh.smoothing.filter_taubin(
+            mesh, lamb=0.28, nu=0.30, iterations=2
+        )
     except Exception:
         pass
-    mesh.remove_duplicate_faces()
-    mesh.remove_degenerate_faces()
+
+    try:
+        mesh.update_faces(mesh.unique_faces())
+    except (AttributeError, TypeError):
+        try:
+            mesh.remove_duplicate_faces()
+        except AttributeError:
+            pass
+
+    try:
+        mesh.update_faces(mesh.nondegenerate_faces())
+    except (AttributeError, TypeError):
+        try:
+            mesh.remove_degenerate_faces()
+        except AttributeError:
+            pass
+
     mesh.merge_vertices()
     mesh.fix_normals()
     return mesh
