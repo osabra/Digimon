@@ -52,7 +52,9 @@ def cyl(scene, radius, height, pos, mat, axis='y'):
 
 
 def cone(scene, r1, r2, h, pos, mat, axis='y'):
-    m = trimesh.creation.conical_frustum(radius1=r1, radius2=r2, height=h, sections=32)
+    # trimesh 5.x exposes this primitive as creation.cone(radius, height, radius2).
+    # conical_frustum is not part of the public creation API on current runners.
+    m = trimesh.creation.cone(radius=r1, height=h, sections=32, radius2=r2)
     if axis == 'x':
         m.apply_transform(trimesh.transformations.rotation_matrix(math.pi / 2, [0, 1, 0]))
     if axis == 'z':
@@ -70,7 +72,6 @@ def eye_pair(s, y, z, iris='red', size=.115):
 
 
 def patch(s, pos, scale, mat='blue', rot=(0, 0, 0)):
-    # A very shallow rounded patch used for Gabumon's painted/fur markings.
     uv(s, 1.0, pos, mat, scale, 28, 18)
 
 
@@ -82,18 +83,10 @@ def normalize(s):
 
 def gabumon():
     s = trimesh.Scene()
-
-    # Blue reptilian body: shorter torso, broad shoulders and compact feet.
     uv(s, .58, (0, .78, 0), 'blue', (1.02, 1.18, .78))
     uv(s, .43, (0, 1.18, -.02), 'blue', (1.05, .72, .82))
-
-    # Distinctive cream pelt, separated from the blue body so it remains readable
-    # from every rotation angle instead of becoming a featureless blob.
     uv(s, .61, (0, 1.66, -.01), 'cream', (1.00, 1.00, .84))
     uv(s, .47, (0, 1.13, -.37), 'cream', (1.05, .90, .58))
-
-    # Characteristic blue markings on the pelt/head. They sit just above the
-    # surface and are intentionally repeated on front and sides for 360-degree view.
     for x, y, sx, sy, sz in [
         (-.31, 1.82, .105, .28, .045), (-.17, 1.94, .09, .34, .045),
         (.17, 1.94, .09, .34, .045), (.31, 1.82, .105, .28, .045),
@@ -101,38 +94,26 @@ def gabumon():
         (.22, 1.36, .10, .42, .05), (.40, 1.45, .10, .34, .05),
     ]:
         patch(s, (x, y, -.585 if y > 1.6 else -.455), (sx, sy, sz), 'blue')
-
-    # Side/back pelt markings prevent the model from looking blank when rotated.
     for side in (-1, 1):
         for y, z, sy, sz in [(1.73, -.18, .30, .04), (1.50, -.20, .26, .04), (1.27, -.23, .22, .04)]:
             patch(s, (side * .505, y, z), (.045, sy, sz), 'blue')
-
-    # Large rounded ears, inner pink, and the single horn.
     for x in (-.53, .53):
         uv(s, .25, (x, 1.90, -.01), 'blue', (.62, 1.15, .46))
         uv(s, .145, (x, 1.90, -.235), 'pink', (.62, 1.10, .38))
     cone(s, .17, .075, .43, (0, 2.38, -.01), 'yellow')
-
-    # Muzzle, nose and eyes with the familiar large anime proportions.
     uv(s, .225, (-.235, 1.55, -.64), 'cream', (1.28, .72, .66))
     uv(s, .225, (.235, 1.55, -.64), 'cream', (1.28, .72, .66))
     uv(s, .10, (0, 1.49, -.78), 'black', (1.25, .68, .58))
     eye_pair(s, 1.80, -.60, 'red', .125)
-
-    # Short arms with rounded hands and three visible white claws.
     for x in (-.58, .58):
         uv(s, .235, (x, .82, -.02), 'blue', (.78, 1.20, .82))
         uv(s, .19, (x, .43, -.30), 'blue', (1.15, .68, .95))
         for dx in (-.075, 0, .075):
             cone(s, .043, .010, .17, (x + dx, .37, -.43), 'white')
-
-    # Feet are wide and rounded, matching the compact anime silhouette.
     for x in (-.27, .27):
         uv(s, .25, (x, .20, -.22), 'blue', (1.20, .62, 1.28))
         for dx in (-.075, 0, .075):
             cone(s, .043, .010, .14, (x + dx, .17, -.39), 'white')
-
-    # Small tail visible in side/back rotations.
     uv(s, .19, (0, .70, .56), 'blue', (.72, .72, 1.75))
     normalize(s)
     return s
