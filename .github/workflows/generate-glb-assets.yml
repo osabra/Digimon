@@ -4,6 +4,7 @@ on:
     paths:
       - 'tools/generate_digimon_glb.py'
       - 'tools/generate_biyomon_better.py'
+      - 'tools/postprocess_digimon_glb.py'
       - '.github/workflows/generate-glb-assets.yml'
 permissions:
   contents: write
@@ -21,11 +22,12 @@ jobs:
         run: |
           python tools/generate_digimon_glb.py
           python tools/generate_biyomon_better.py
+          python tools/postprocess_digimon_glb.py
       - name: Commit generated assets
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/src/main/assets/digimon/*.glb
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Improve Biyomon 3D model'
+          git commit -m 'Improve all Digimon 3D models'
           git push
