@@ -1,5 +1,6 @@
 name: Build APK
 
+# Manual rebuild trigger for the current Digimon GLB assets.
 on:
   push:
     branches: [ main ]
