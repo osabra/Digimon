@@ -5,37 +5,31 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 
 /**
- * Anime-style Digimon viewer.
+ * Main 3D Digimon viewer.
  *
- * The bundled GLB assets are low-poly/faceted and do not match the smooth
- * proportions of the anime designs. Until high-detail anime-quality assets
- * replace them, use the smooth procedural renderer for every Digimon so the
- * characters do not appear as angular geometric figures.
+ * Use the bundled GLB assets as the source of truth. The procedural fallback
+ * used previously made the characters look like collections of geometric
+ * primitives, which was especially noticeable on Biyomon and Gabumon.
  */
 class DigimonModelView(context: Context, initialDigimon: String = "Gabumon") : FrameLayout(context) {
     private var currentName = initialDigimon
-    private var fallbackView: Digimon3DView? = null
+    private var glbView: GlbDigimonView
 
     init {
         isClickable = true
-        rebuild(initialDigimon)
-    }
-
-    fun setDigimon(name: String) {
-        if (name == currentName) return
-        currentName = name
-        fallbackView?.setDigimon(name)
-    }
-
-    private fun rebuild(name: String) {
-        removeAllViews()
-        fallbackView = Digimon3DView(context, name)
+        glbView = GlbDigimonView(context, initialDigimon)
         addView(
-            fallbackView,
+            glbView,
             LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
+    }
+
+    fun setDigimon(name: String) {
+        if (name == currentName) return
+        currentName = name
+        glbView.setDigimon(name)
     }
 }
