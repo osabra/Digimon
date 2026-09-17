@@ -16,8 +16,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install 3D generator
-        run: python -m pip install trimesh numpy scipy pygltflib pillow
-      - name: Generate textured high quality GLB files
+        run: python -m pip install trimesh numpy scipy scikit-image pygltflib pillow
+      - name: Generate smooth anime-like GLB files
         run: |
           python tools/generate_digimon_glb.py
           python tools/postprocess_digimon_glb.py
@@ -27,5 +27,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/src/main/assets/digimon/*.glb
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Upgrade all Digimon models with textured geometry'
+          git commit -m 'Regenerate all Digimon with organic anime-like geometry'
           git push
