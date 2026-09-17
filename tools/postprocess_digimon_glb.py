@@ -10,15 +10,12 @@ NAMES = [
     'Gatomon', 'Tentomon', 'Gomamon', 'Palmon', 'Veemon', 'Wormmon'
 ]
 
-# Quality pass for every generated companion.  The generator provides the
-# character-specific geometry; this pass makes the final GLBs cleaner and
-# considerably closer to a polished anime/toon 3D asset: smoother normals,
-# cleaner embedded textures and less plastic-looking materials.
+# Final quality pass for every companion. The goal is a clean, rounded,
+# anime/toon presentation rather than a noisy procedural/plastic look.
 
 def improve_mesh(mesh):
     if not isinstance(mesh, trimesh.Trimesh):
         return mesh
-
     try:
         mesh.update_faces(mesh.unique_faces())
     except (AttributeError, TypeError):
@@ -26,7 +23,6 @@ def improve_mesh(mesh):
             mesh.remove_duplicate_faces()
         except AttributeError:
             pass
-
     try:
         mesh.update_faces(mesh.nondegenerate_faces())
     except (AttributeError, TypeError):
@@ -34,19 +30,13 @@ def improve_mesh(mesh):
             mesh.remove_degenerate_faces()
         except AttributeError:
             pass
-
     mesh.merge_vertices()
     mesh.process(validate=True)
-
-    # Several gentle Taubin passes remove the faceted/rough appearance without
-    # collapsing the stylised silhouettes or changing the proportions.
+    # Extra gentle smoothing preserves the stylised silhouette.
     try:
-        trimesh.smoothing.filter_taubin(
-            mesh, lamb=0.18, nu=0.22, iterations=4
-        )
+        trimesh.smoothing.filter_taubin(mesh, lamb=0.16, nu=0.22, iterations=6)
     except Exception:
         pass
-
     mesh.merge_vertices()
     mesh.fix_normals()
     return mesh
@@ -58,15 +48,21 @@ def clean_texture(image):
     try:
         if not isinstance(image, Image.Image):
             image = Image.fromarray(np.asarray(image))
-        image = image.convert('RGB')
-        # Higher resolution plus light denoising removes the visible procedural
-        # rings/noise while retaining the hand-painted colour variation.
-        image = image.resize((512, 512), Image.Resampling.LANCZOS)
-        image = image.filter(ImageFilter.GaussianBlur(radius=0.65))
-        image = ImageEnhance.Contrast(image).enhance(1.04)
-        image = ImageEnhance.Color(image).enhance(1.08)
-        image = ImageEnhance.Sharpness(image).enhance(1.18)
-        return image
+        src = np.asarray(image.convert('RGB'), dtype=np.float32)
+        # Collapse the old grain/rings into a stable palette colour. This is
+        # intentionally clean and graphic, like an anime 3D asset.
+        base = np.median(src.reshape(-1, 3), axis=0)
+        base = np.clip(base, 0, 255)
+        h = w = 512
+        yy, xx = np.mgrid[0:h, 0:w]
+        light = np.exp(-(((xx-w*0.34)/(w*0.55))**2 + ((yy-h*0.30)/(h*0.62))**2))
+        shade = 0.90 + 0.16 * light
+        arr = np.clip(base.reshape(1,1,3) * shade[...,None], 0, 255).astype(np.uint8)
+        out = Image.fromarray(arr, 'RGB')
+        out = ImageEnhance.Color(out).enhance(1.05)
+        out = ImageEnhance.Contrast(out).enhance(1.03)
+        out = out.filter(ImageFilter.GaussianBlur(radius=0.35))
+        return out
     except Exception:
         return image
 
@@ -75,19 +71,14 @@ def improve_material(visual):
     mat = getattr(visual, 'material', None)
     if mat is None:
         return
-
-    # Clean the embedded texture if the loader exposed it as a PIL image.
     try:
         if hasattr(mat, 'image') and mat.image is not None:
             mat.image = clean_texture(mat.image)
     except Exception:
         pass
-
     if isinstance(mat, PBRMaterial):
         mat.metallicFactor = 0.0
-        mat.roughnessFactor = 0.62
-        # Filament/Android renderers generally respect these values and produce
-        # a softer anime-like response than the previous shiny plastic look.
+        mat.roughnessFactor = 0.78
         try:
             mat.doubleSided = True
         except Exception:
@@ -105,7 +96,6 @@ for name in NAMES:
     path = os.path.join(OUT, name + '.glb')
     if not os.path.exists(path):
         raise FileNotFoundError(path)
-
     scene = trimesh.load(path, force='scene')
     improve_scene(scene)
     scene.export(path, file_type='glb')
