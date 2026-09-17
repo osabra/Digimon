@@ -4,10 +4,16 @@ import android.content.Context
 import android.view.ViewGroup
 import android.widget.FrameLayout
 
-/** Shows a real GLB when it is packaged; otherwise keeps the existing procedural fallback. */
+/**
+ * Anime-style Digimon viewer.
+ *
+ * The bundled GLB assets are low-poly/faceted and do not match the smooth
+ * proportions of the anime designs. Until high-detail anime-quality assets
+ * replace them, use the smooth procedural renderer for every Digimon so the
+ * characters do not appear as angular geometric figures.
+ */
 class DigimonModelView(context: Context, initialDigimon: String = "Gabumon") : FrameLayout(context) {
     private var currentName = initialDigimon
-    private var glbView: GlbDigimonView? = null
     private var fallbackView: Digimon3DView? = null
 
     init {
@@ -18,24 +24,18 @@ class DigimonModelView(context: Context, initialDigimon: String = "Gabumon") : F
     fun setDigimon(name: String) {
         if (name == currentName) return
         currentName = name
-        if (glbView != null) glbView?.setDigimon(name) else rebuild(name)
+        fallbackView?.setDigimon(name)
     }
 
     private fun rebuild(name: String) {
         removeAllViews()
-        val hasGlb = try {
-            context.assets.open("digimon/$name.glb").close()
-            true
-        } catch (_: Exception) { false }
-
-        if (hasGlb) {
-            glbView = GlbDigimonView(context, name)
-            fallbackView = null
-            addView(glbView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        } else {
-            fallbackView = Digimon3DView(context, name)
-            glbView = null
-            addView(fallbackView, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        }
+        fallbackView = Digimon3DView(context, name)
+        addView(
+            fallbackView,
+            LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
     }
 }
