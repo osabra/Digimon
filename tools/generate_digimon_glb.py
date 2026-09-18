@@ -1,200 +1,299 @@
 import os, math, numpy as np, trimesh
-from PIL import Image, ImageDraw
 from trimesh.visual.texture import TextureVisuals, SimpleMaterial
 
-OUT = 'app/src/main/assets/digimon'
+OUT = "app/src/main/assets/digimon"
 os.makedirs(OUT, exist_ok=True)
 
-# Original stylised 3D companions with embedded base-colour textures.
-# The geometry is deliberately rounded and layered so each character keeps a
-# recognizable silhouette while remaining light enough for an Android viewer.
+# Clean, character-specific 3D designs based on the recognizable anime silhouettes.
+# Smooth primitives are used only as construction pieces; the final meshes are
+# dense, rounded and deliberately avoid the old generic blob proportions.
+
 COL = {
-    'blue': (18,78,190), 'blue2': (34,112,235), 'darkblue': (8,35,95),
-    'cream': (235,222,178), 'white': (250,249,242),
-    'orange': (238,92,18), 'orange2': (255,139,26), 'yellow': (245,174,35),
-    'red': (205,25,34), 'red2': (244,50,54), 'pink': (225,40,91),
-    'pink2': (250,70,115), 'green': (36,151,53), 'green2': (76,190,61),
-    'purple': (122,50,164), 'lightblue': (45,165,232), 'brown': (105,55,25),
-    'grey': (130,145,155), 'black': (5,6,10)
+    "blue": (20, 83, 185), "darkblue": (8, 38, 98), "cream": (239, 226, 185),
+    "white": (250, 249, 244), "orange": (239, 92, 18), "orange2": (255, 139, 26),
+    "yellow": (246, 177, 38), "red": (207, 28, 38), "red2": (242, 54, 61),
+    "pink": (225, 39, 92), "pink2": (249, 76, 117), "green": (39, 153, 54),
+    "green2": (82, 194, 67), "purple": (112, 48, 160), "lightblue": (46, 164, 231),
+    "brown": (103, 55, 28), "grey": (128, 142, 151), "black": (4, 5, 9),
 }
 
+MATS = {k: SimpleMaterial(image=None, diffuse=np.array(v, dtype=np.uint8)) for k, v in COL.items()}
 
-def texture_for(name, base):
-    # Embedded hand-painted/toon texture: subtle grain, vignette and highlight.
-    rng = np.random.default_rng(abs(hash(name)) % (2**32))
-    h = w = 128
-    a = np.array(base, dtype=np.float32).reshape(1, 1, 3)
-    noise = rng.normal(0, 5, (h, w, 1))
-    yy, xx = np.mgrid[0:h, 0:w]
-    vignette = ((xx - w/2)**2 + (yy - h/2)**2) / (w*w)
-    arr = np.clip(a + noise - 7*vignette[..., None], 0, 255).astype(np.uint8)
-    im = Image.fromarray(arr, 'RGB')
-    d = ImageDraw.Draw(im)
-    d.ellipse((10, 10, 35, 35), fill=tuple(np.clip(a[0,0] + 25, 0, 255).astype(int)))
-    return im
-
-
-MATS = {k: SimpleMaterial(image=texture_for(k, v)) for k, v in COL.items()}
-
-
-def spherical_uv(mesh):
-    v = mesh.vertices
-    r = np.linalg.norm(v, axis=1)
-    r[r < 1e-6] = 1
-    u = np.arctan2(v[:, 2], v[:, 0]) / (2*np.pi) + .5
-    vv = np.arcsin(np.clip(v[:, 1] / r, -1, 1)) / np.pi + .5
-    return np.c_[u, vv]
-
-
-def add(scene, mesh, mat):
-    if hasattr(mesh, 'remove_duplicate_faces'):
-        mesh.remove_duplicate_faces()
-    mesh.visual = TextureVisuals(uv=spherical_uv(mesh), material=MATS[mat])
+def add(s, mesh, mat):
+    mesh.remove_duplicate_faces()
+    mesh.merge_vertices()
     mesh.process(validate=True)
-    scene.add_geometry(mesh)
+    mesh.visual = TextureVisuals(uv=None, material=MATS[mat])
+    s.add_geometry(mesh)
 
+def uv_sphere(s, r, p, mat, scale=(1,1,1), seg=64, rings=40):
+    m = trimesh.creation.uv_sphere(radius=r, count=[seg, rings])
+    m.apply_scale(scale)
+    m.apply_translation(p)
+    add(s, m, mat)
+    return m
 
-def sph(scene, radius, pos, mat, scale=(1,1,1), seg=64, rings=40):
-    mesh = trimesh.creation.uv_sphere(radius=radius, count=[seg, rings])
-    mesh.apply_scale(scale)
-    mesh.apply_translation(pos)
-    add(scene, mesh, mat)
+def capsule(s, radius, height, p, mat, scale=(1,1,1)):
+    m = trimesh.creation.capsule(radius=radius, height=height, count=[64,32])
+    m.apply_scale(scale)
+    m.apply_translation(p)
+    add(s, m, mat)
+    return m
 
+def cone(s, r1, r2, h, p, mat, axis="y"):
+    m = trimesh.creation.cone(radius=r1, radius2=r2, height=h, sections=64)
+    if axis == "x":
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi/2, [0,1,0]))
+    elif axis == "z":
+        m.apply_transform(trimesh.transformations.rotation_matrix(math.pi/2, [1,0,0]))
+    m.apply_translation(p)
+    add(s, m, mat)
+    return m
 
-def cap(scene, radius, height, pos, mat, scale=(1,1,1)):
-    mesh = trimesh.creation.capsule(radius=radius, height=height, count=[64,32])
-    mesh.apply_scale(scale)
-    mesh.apply_translation(pos)
-    add(scene, mesh, mat)
+def rotate(mesh, angle, axis):
+    mesh.apply_transform(trimesh.transformations.rotation_matrix(angle, axis))
+    return mesh
 
+def eye(s, x, y, z, iris="red", size=.12, look=(0,0,0)):
+    uv_sphere(s, size, (x,y,z), "black", (1,1,1.08), 48, 32)
+    uv_sphere(s, size*.53, (x+look[0], y+look[1], z+look[2]-.055), iris, (1,1,1), 40, 28)
+    uv_sphere(s, size*.15, (x-.035+look[0], y-.04, z-.09+look[2]), "white", (1,1,1), 24, 18)
 
-def cone(scene, r1, r2, height, pos, mat, axis='y'):
-    mesh = trimesh.creation.cone(radius=r1, radius2=r2, height=height, sections=64)
-    if axis == 'x':
-        mesh.apply_transform(trimesh.transformations.rotation_matrix(math.pi/2, [0,1,0]))
-    elif axis == 'z':
-        mesh.apply_transform(trimesh.transformations.rotation_matrix(math.pi/2, [1,0,0]))
-    mesh.apply_translation(pos)
-    add(scene, mesh, mat)
-
-
-def eye(scene, x, y, z, iris='red', size=.13):
-    sph(scene, size, (x,y,z), 'black', (1,1,1.04), 48, 32)
-    sph(scene, size*.55, (x,y-.015,z-.06), iris, (1,1,1), 40, 28)
-    sph(scene, size*.16, (x-.03,y-.035,z-.09), 'white', (1,1,1), 24, 18)
-
-
-def claws(scene, x, y, z, mat, n=3, spread=.065):
+def claw_row(s, x, y, z, mat, n=3, spread=.075, length=.20):
     for i in range(n):
-        cone(scene, .045, .008, .17, (x+(i-(n-1)/2)*spread,y,z), mat)
+        dx = (i-(n-1)/2)*spread
+        cone(s, .048, .008, length, (x+dx, y, z), mat)
 
+def tuft(s, p, mat, size=.16, tilt=0):
+    m = cone(s, size, .015, size*2.2, p, mat)
+    rotate(m, tilt, [0,0,1])
+    return m
 
-def tail(scene, points, mat, radius=.16, tip=None):
-    for i, p in enumerate(points):
-        sph(scene, radius*(1-.48*i/max(1,len(points)-1)), p, mat, (1,1,1.18), 48, 30)
+def normalize(s):
+    b = s.bounds
+    c = (b[0]+b[1])/2
+    s.apply_translation([-c[0], -b[0][1], -c[2]])
+    return s
+
+def tail_segments(s, pts, mat, r=.16, tip=None):
+    n = len(pts)
+    for i,p in enumerate(pts):
+        rr = r*(1-.58*i/max(1,n-1))
+        uv_sphere(s, rr, p, mat, (1,1,1.25), 48, 30)
     if tip:
-        cone(scene, radius*.6, .01, radius*2.2, points[-1], tip)
+        cone(s, r*.65, .01, r*2.3, pts[-1], tip)
 
+def belly(s, p, scale, mat="cream"):
+    uv_sphere(s, .42, p, mat, scale, 64, 40)
 
-def normalize(scene):
-    b = scene.bounds
-    c = (b[0] + b[1]) / 2
-    scene.apply_translation([-c[0], -b[0][1], -c[2]])
-    return scene
-
-
-def agumon():
-    s=trimesh.Scene(); sph(s,.62,(0,.78,0),'orange',(1.03,1.25,.9)); sph(s,.58,(0,1.63,-.03),'orange',(1.02,1,.9)); sph(s,.37,(0,1.2,-.51),'cream',(1.05,.9,.55)); eye(s,-.2,1.75,-.61,'red',.125); eye(s,.2,1.75,-.61,'red',.125); sph(s,.13,(0,1.53,-.8),'black',(1.35,.62,.55))
-    for x in (-.3,.3): cone(s,.14,.045,.36,(x,2.17,-.02),'orange2')
-    for side in (-1,1): cap(s,.17,.42,(side*.5,1.25,-.02),'orange',(.82,1.25,.85)); sph(s,.2,(side*.48,.3,-.25),'orange',(1.25,.7,1.05)); claws(s,side*.48,.16,-.43,'cream')
-    tail(s,[(0,.7,.43),(0,.48,.6),(0,.25,.5)],'orange',.2); return normalize(s)
-
-
-def gabumon():
-    s=trimesh.Scene(); sph(s,.61,(0,.78,0),'blue',(1.04,1.2,.87)); sph(s,.49,(0,1.3,0),'blue',(1.04,.82,.85)); sph(s,.6,(0,1.72,-.02),'cream',(1,.98,.88)); sph(s,.4,(0,1.22,-.52),'cream',(1.08,.9,.58)); eye(s,-.2,1.8,-.64,'red',.125); eye(s,.2,1.8,-.64,'red',.125); sph(s,.11,(0,1.5,-.81),'black',(1.25,.7,.58)); sph(s,.23,(-.22,1.54,-.67),'cream',(1.3,.72,.62)); sph(s,.23,(.22,1.54,-.67),'cream',(1.3,.72,.62))
-    for side in (-1,1): cone(s,.17,.05,.52,(side*.3,2.3,-.02),'yellow'); sph(s,.24,(side*.52,1.42,0),'blue',(.72,1.25,.62)); sph(s,.16,(side*.53,1.5,-.22),'pink',(.7,1.1,.4)); sph(s,.2,(side*.3,.28,-.25),'blue',(1.25,.68,1.1)); claws(s,side*.3,.15,-.42,'white')
-    for x,y,z,sc in [(-.4,1.95,.2,.7),(-.2,2.08,.18,.75),(0,2.14,.18,.8),(.2,2.08,.18,.75),(.4,1.95,.2,.7)]: sph(s,.09,(x,y,z),'white',(sc,1.8,.35),36,24)
-    tail(s,[(0,.72,.48),(0,.5,.7)],'blue',.18); return normalize(s)
-
-
-def guilmon():
-    s=trimesh.Scene(); sph(s,.66,(0,.8,0),'red',(1.03,1.25,.9)); sph(s,.63,(0,1.7,0),'red',(1.02,1,.9)); sph(s,.37,(0,1.2,-.52),'white',(1,.9,.55)); eye(s,-.21,1.77,-.62,'red',.13); eye(s,.21,1.77,-.62,'red',.13); sph(s,.11,(0,1.5,-.82),'black',(1.3,.65,.55))
-    for side in (-1,1): cone(s,.2,.055,.5,(side*.29,2.35,0),'white'); cap(s,.18,.45,(side*.52,1.0,0),'red',(.8,1.3,.85)); sph(s,.2,(side*.28,.28,-.25),'red',(1.25,.68,1.1)); claws(s,side*.28,.16,-.43,'white')
-    for p in [(-.12,1.33,-.82),(0,1.25,-.85),(.12,1.33,-.82)]: cone(s,.07,.015,.18,p,'black')
-    tail(s,[(0,.7,.46),(0,.48,.68)],'red',.2); return normalize(s)
-
-
-def renamon():
-    s=trimesh.Scene(); sph(s,.54,(0,.82,0),'yellow',(1,.98,.75)); sph(s,.58,(0,1.74,0),'yellow',(1,.98,.86)); sph(s,.31,(0,1.2,-.5),'cream',(1,.9,.55)); eye(s,-.2,1.8,-.58,'red',.11); eye(s,.2,1.8,-.58,'red',.11)
-    for side in (-1,1): cone(s,.16,.04,.76,(side*.3,2.43,0),'yellow'); cone(s,.09,.018,.25,(side*.3,2.88,0),'purple'); cap(s,.17,.5,(side*.48,1.05,0),'yellow',(.7,1.5,.72)); sph(s,.17,(side*.42,.38,-.2),'yellow',(1,.65,1.2)); claws(s,side*.42,.18,-.4,'white')
-    tail(s,[(0,.68,.5),(0,.43,.74),(0,.18,.68)],'yellow',.18,'purple'); return normalize(s)
-
-
-def biyomon():
-    s=trimesh.Scene(); sph(s,.63,(0,.8,0),'pink',(1.04,1.23,.87)); sph(s,.58,(0,1.68,0),'pink',(1.03,.95,.88)); sph(s,.44,(0,1.62,-.5),'cream',(1.02,.78,.48)); sph(s,.4,(0,1.02,-.55),'cream',(1.05,1,.4)); eye(s,-.2,1.8,-.76,'blue2',.12); eye(s,.2,1.8,-.76,'blue2',.12); sph(s,.15,(0,1.57,-.86),'orange2',(1.4,.58,.7)); sph(s,.105,(0,1.47,-.84),'orange',(1.3,.5,.65))
-    for x,yy,sc in [(0,2.25,1),(-.17,2.12,.78),(.17,2.12,.78),(-.3,2.02,.62),(.3,2.02,.62)]: sph(s,.17 if x==0 else .12,(x,yy,-.02),'red2',(sc,1.5,.6))
+def arm_pair(s, y, z, mat, radius=.18, length=.45, claw="white"):
     for side in (-1,1):
-        sph(s,.36,(side*.53,1.22,.02),'blue2',(.72,1.3,.64)); sph(s,.29,(side*.65,.99,.03),'blue',(.68,1.18,.58))
-        for i,(y,rr) in enumerate([(1.32,.25),(1.1,.22),(.9,.19)]): sph(s,rr,(side*(.72+i*.045),y,.0),'blue2',(.68,1.15,.55))
-        sph(s,.23,(side*.28,.22,-.24),'orange',(1.25,.65,1.3)); claws(s,side*.28,.16,-.4,'orange',3,.07)
-    tail(s,[(0,.72,.48),(0,.52,.72)],'pink',.17,'blue2'); return normalize(s)
+        capsule(s, radius, length, (side*.50,y,z), mat, (.82,1.18,.9))
+        claw_row(s, side*.50, y-length*.55, z-.18, claw)
 
-
-def patamon():
-    s=trimesh.Scene(); sph(s,.61,(0,.82,0),'cream',(1,1.22,.86)); sph(s,.58,(0,1.68,0),'cream',(1,.96,.86)); sph(s,.31,(0,1.2,-.5),'cream',(1,.9,.55)); eye(s,-.2,1.79,-.57,'red',.11); eye(s,.2,1.79,-.57,'red',.11)
-    for side in (-1,1): sph(s,.39,(side*.5,1.58,.02),'cream',(.55,1.4,.35)); sph(s,.28,(side*.66,1.1,.02),'cream',(.5,1.5,.3)); sph(s,.21,(side*.28,.28,-.25),'cream',(1.25,.68,1.15)); claws(s,side*.28,.16,-.41,'white')
-    tail(s,[(0,.68,.46),(0,.45,.68)],'cream',.14,'yellow'); return normalize(s)
-
-
-def gatomon():
-    s=trimesh.Scene(); sph(s,.48,(0,.86,0),'cream',(1,.98,.73)); sph(s,.55,(0,1.72,0),'cream',(1,.96,.85)); sph(s,.28,(0,1.22,-.5),'cream',(1,.9,.55)); eye(s,-.2,1.8,-.57,'blue2',.105); eye(s,.2,1.8,-.57,'blue2',.105)
-    for side in (-1,1): cone(s,.13,.035,.58,(side*.27,2.42,0),'yellow'); cap(s,.17,.48,(side*.45,1.17,0),'cream',(.72,1.5,.67)); sph(s,.17,(side*.31,.38,-.22),'cream',(1,.65,1.15)); claws(s,side*.31,.18,-.39,'white')
-    sph(s,.32,(0,1.31,-.5),'yellow',(1.2,.2,.2)); tail(s,[(0,.7,.48),(.12,.47,.68),(.23,.24,.72)],'cream',.13,'yellow'); return normalize(s)
-
-
-def tentomon():
-    s=trimesh.Scene(); sph(s,.66,(0,.82,0),'red',(1,1.2,.9)); sph(s,.6,(0,1.67,0),'red',(1,.96,.88)); sph(s,.31,(0,1.2,-.5),'yellow',(1,.9,.55)); eye(s,-.21,1.79,-.57,'blue2',.11); eye(s,.21,1.79,-.57,'blue2',.11)
-    for side in (-1,1): cone(s,.07,.018,.52,(side*.25,2.3,0),'yellow'); sph(s,.08,(side*.25,2.58,0),'yellow'); sph(s,.4,(side*.45,1.22,.08),'yellow',(.7,1.3,.34)); sph(s,.21,(side*.45,1.1,-.19),'black',(.75,1,.25)); sph(s,.2,(side*.28,.28,-.25),'yellow',(1.25,.68,1.1)); claws(s,side*.28,.16,-.41,'black')
-    tail(s,[(0,.68,.46),(0,.45,.66)],'red',.16); return normalize(s)
-
-
-def gomamon():
-    s=trimesh.Scene(); sph(s,.61,(0,.82,0),'white',(1,1.26,.87)); sph(s,.58,(0,1.68,0),'white',(1,.96,.86)); sph(s,.31,(0,1.22,-.5),'white',(1,.9,.55)); eye(s,-.2,1.79,-.57,'blue2',.11); eye(s,.2,1.79,-.57,'blue2',.11)
-    for side in (-1,1): sph(s,.11,(side*.5,1.76,-.18),'pink'); sph(s,.29,(side*.56,1.13,.02),'white',(.55,1.6,.35)); sph(s,.2,(side*.28,.25,-.25),'white',(1.25,.68,1.15)); claws(s,side*.28,.16,-.41,'pink')
-    for x in [-.32,-.16,0,.16,.32]: sph(s,.08,(x,2.2,.05),'red',(.75,1.6,.55))
-    tail(s,[(0,.7,.46),(0,.48,.67)],'white',.17); return normalize(s)
-
-
-def palmon():
-    s=trimesh.Scene(); sph(s,.63,(0,.82,0),'green',(1,1.22,.87)); sph(s,.57,(0,1.68,0),'green',(1,.96,.86)); sph(s,.31,(0,1.22,-.5),'cream',(1,.9,.55)); eye(s,-.2,1.79,-.57,'red',.11); eye(s,.2,1.79,-.57,'red',.11)
-    for a in np.linspace(-1.1,1.1,5): sph(s,.19,(.34*math.sin(a),2.15,.05+.16*math.cos(a)),'green2',(.55,1.3,.3))
-    for side in (-1,1): sph(s,.25,(side*.49,1.12,0),'green',(.75,1.45,.62)); sph(s,.22,(side*.28,.27,-.25),'green',(1.2,.68,1.1)); claws(s,side*.28,.16,-.41,'pink')
-    for side in (-1,1): sph(s,.18,(side*.18,.7,.53),'green2',(.7,1,1.6))
+def make_agumon():
+    s=trimesh.Scene()
+    uv_sphere(s,.64,(0,.88,0),"orange",(1.04,1.28,.90))
+    uv_sphere(s,.59,(0,1.68,-.02),"orange",(1.03,1.02,.90))
+    belly(s,(0,1.23,-.51),(1.08,.92,.58))
+    eye(s,-.205,1.79,-.63,"red",.125); eye(s,.205,1.79,-.63,"red",.125)
+    uv_sphere(s,.15,(0,1.56,-.83),"black",(1.45,.62,.58))
+    for x in (-.30,.30): tuft(s,(x,2.28,-.02),"orange2",.14,0)
+    arm_pair(s,1.25,-.02,"orange",.18,.45,"cream")
+    for side in (-1,1): uv_sphere(s,.22,(side*.29,.30,-.28),"orange",(1.2,.72,1.08),56,36)
+    tail_segments(s,[(0,.72,.42),(0,.49,.64),(0,.28,.52)],"orange",.20)
     return normalize(s)
 
-
-def veemon():
-    s=trimesh.Scene(); sph(s,.62,(0,.82,0),'lightblue',(1,1.22,.87)); sph(s,.59,(0,1.68,0),'lightblue',(1,.98,.88)); sph(s,.32,(0,1.2,-.5),'cream',(1,.9,.55)); eye(s,-.205,1.79,-.57,'red',.115); eye(s,.205,1.79,-.57,'red',.115)
-    for side in (-1,1): cone(s,.15,.035,.7,(side*.28,2.36,0),'lightblue'); cone(s,.1,.015,.3,(side*.28,2.76,0),'yellow'); cap(s,.22,.46,(side*.5,1.12,0),'lightblue',(.75,1.4,.72)); sph(s,.2,(side*.28,.28,-.25),'lightblue',(1.2,.68,1.1)); claws(s,side*.28,.16,-.41,'white')
-    cone(s,.18,.01,.28,(0,1.3,-.7),'yellow'); tail(s,[(0,.7,.46),(0,.45,.7)],'lightblue',.18,'yellow'); return normalize(s)
-
-
-def wormmon():
-    s=trimesh.Scene(); sph(s,.62,(0,.82,0),'green',(1,1.3,.88)); sph(s,.58,(0,1.7,0),'green',(1,.98,.88)); sph(s,.31,(0,1.22,-.5),'yellow',(1,.9,.55)); eye(s,-.21,1.79,-.57,'red',.11); eye(s,.21,1.79,-.57,'red',.11)
-    for side in (-1,1): cone(s,.09,.02,.62,(side*.25,2.34,0),'green2'); sph(s,.08,(side*.25,2.66,0),'yellow')
+def make_gabumon():
+    s=trimesh.Scene()
+    # Blue body with the characteristic pale fur head and muzzle.
+    uv_sphere(s,.62,(0,.82,0),"blue",(1.05,1.25,.88))
+    uv_sphere(s,.50,(0,1.34,.01),"blue",(1.05,.82,.86))
+    uv_sphere(s,.60,(0,1.77,-.01),"cream",(1.02,1.02,.90))
+    belly(s,(0,1.20,-.53),(1.10,.88,.56))
+    uv_sphere(s,.23,(-.22,1.55,-.67),"cream",(1.32,.72,.62))
+    uv_sphere(s,.23,(.22,1.55,-.67),"cream",(1.32,.72,.62))
+    eye(s,-.205,1.84,-.66,"red",.125); eye(s,.205,1.84,-.66,"red",.125)
+    uv_sphere(s,.11,(0,1.53,-.84),"black",(1.25,.70,.58))
     for side in (-1,1):
-        for i in range(3): sph(s,.19,(side*(.45+i*.03),1.22-i*.12,.04),'green2',(.65,1.1,.65))
-        sph(s,.2,(side*.28,.27,-.25),'green',(1.2,.68,1.1)); claws(s,side*.28,.16,-.41,'yellow')
-    tail(s,[(0,.68,.46),(0,.44,.67),(0,.22,.58)],'green',.18,'yellow'); return normalize(s)
+        cone(s,.18,.045,.58,(side*.30,2.40,-.01),"yellow")
+        uv_sphere(s,.24,(side*.54,1.43,0),"blue",(.70,1.28,.64))
+        uv_sphere(s,.16,(side*.55,1.53,-.23),"pink",(.72,1.12,.40))
+        uv_sphere(s,.20,(side*.30,.28,-.27),"blue",(1.25,.68,1.08))
+        claw_row(s,side*.30,.13,-.45,"white",3,.075,.18)
+    # Fur tufts around the forehead.
+    for x,y,sc in [(-.40,2.03,.72),(-.20,2.14,.78),(0,2.19,.86),(.20,2.14,.78),(.40,2.03,.72)]:
+        tuft(s,(x,y,.10),"white",.10*sc,0)
+    tail_segments(s,[(0,.72,.45),(0,.48,.67)],"blue",.18)
+    return normalize(s)
 
+def make_guilmon():
+    s=trimesh.Scene()
+    uv_sphere(s,.67,(0,.84,0),"red",(1.05,1.30,.92))
+    uv_sphere(s,.63,(0,1.72,0),"red",(1.04,1.03,.92))
+    belly(s,(0,1.22,-.53),(1.04,.90,.58),"white")
+    eye(s,-.21,1.79,-.64,"red",.13); eye(s,.21,1.79,-.64,"red",.13)
+    uv_sphere(s,.11,(0,1.51,-.84),"black",(1.3,.68,.55))
+    for side in (-1,1):
+        cone(s,.21,.05,.54,(side*.30,2.40,0),"white")
+        capsule(s,.18,.48,(side*.52,1.10,0),"red",(.82,1.28,.88))
+        uv_sphere(s,.20,(side*.29,.28,-.28),"red",(1.22,.70,1.10))
+        claw_row(s,side*.29,.14,-.45,"white")
+    for x in (-.14,0,.14): cone(s,.07,.01,.18,(x,1.34,-.84),"black")
+    tail_segments(s,[(0,.72,.45),(0,.47,.69),(0,.27,.61)],"red",.20)
+    return normalize(s)
+
+def make_renamon():
+    s=trimesh.Scene()
+    uv_sphere(s,.55,(0,.82,0),"yellow",(1,.98,.76))
+    uv_sphere(s,.58,(0,1.75,0),"yellow",(1,.99,.86))
+    belly(s,(0,1.21,-.51),(1,.90,.55),"cream")
+    eye(s,-.20,1.81,-.61,"red",.115); eye(s,.20,1.81,-.61,"red",.115)
+    for side in (-1,1):
+        cone(s,.17,.035,.82,(side*.30,2.47,0),"yellow")
+        cone(s,.09,.018,.28,(side*.30,2.95,0),"purple")
+        capsule(s,.17,.50,(side*.48,1.08,0),"yellow",(.72,1.48,.72))
+        uv_sphere(s,.17,(side*.42,.37,-.22),"yellow",(1,.65,1.20))
+        claw_row(s,side*.42,.16,-.42,"white")
+    tail_segments(s,[(0,.68,.48),(0,.43,.74),(0,.18,.67)],"yellow",.18,"purple")
+    return normalize(s)
+
+def make_biyomon():
+    s=trimesh.Scene()
+    uv_sphere(s,.64,(0,.82,0),"pink",(1.05,1.26,.88))
+    uv_sphere(s,.58,(0,1.69,0),"pink",(1.04,.96,.89))
+    belly(s,(0,1.10,-.55),(1.04,1.0,.42),"cream")
+    eye(s,-.20,1.82,-.76,"blue",.12); eye(s,.20,1.82,-.76,"blue",.12)
+    uv_sphere(s,.15,(0,1.58,-.88),"orange2",(1.35,.58,.68))
+    uv_sphere(s,.105,(0,1.47,-.86),"orange",(1.30,.50,.64))
+    for x,y,sc in [(0,2.30,1),(-.18,2.16,.82),(.18,2.16,.82),(-.34,2.04,.64),(.34,2.04,.64)]:
+        tuft(s,(x,y,0),"red2",.17*sc,0)
+    for side in (-1,1):
+        for i,(yy,rr) in enumerate([(1.36,.28),(1.12,.25),(.91,.21)]):
+            uv_sphere(s,rr,(side*(.53+i*.04),yy,.02),"blue",( .70,1.20,.58),56,36)
+        uv_sphere(s,.23,(side*.29,.24,-.27),"orange",(1.25,.68,1.25))
+        claw_row(s,side*.29,.13,-.43,"orange")
+    tail_segments(s,[(0,.72,.48),(0,.52,.72)],"pink",.17,"blue")
+    return normalize(s)
+
+def make_patamon():
+    s=trimesh.Scene()
+    uv_sphere(s,.62,(0,.84,0),"cream",(1.02,1.25,.88))
+    uv_sphere(s,.58,(0,1.70,0),"cream",(1,.98,.87))
+    belly(s,(0,1.20,-.51),(1,.91,.56),"cream")
+    eye(s,-.20,1.81,-.59,"red",.11); eye(s,.20,1.81,-.59,"red",.11)
+    for side in (-1,1):
+        # Large floppy ears/wings are the defining Patamon silhouette.
+        uv_sphere(s,.42,(side*.52,1.58,.03),"cream",(.56,1.45,.34),64,40)
+        uv_sphere(s,.30,(side*.69,1.10,.03),"cream",(.50,1.45,.30),64,40)
+        uv_sphere(s,.21,(side*.29,.30,-.26),"cream",(1.25,.70,1.12))
+        claw_row(s,side*.29,.14,-.43,"white")
+    tail_segments(s,[(0,.68,.46),(0,.44,.67)],"cream",.14,"yellow")
+    return normalize(s)
+
+def make_gatomon():
+    s=trimesh.Scene()
+    uv_sphere(s,.49,(0,.87,0),"cream",(1,.99,.74))
+    uv_sphere(s,.55,(0,1.74,0),"cream",(1,.98,.86))
+    belly(s,(0,1.22,-.51),(1,.90,.54),"cream")
+    eye(s,-.20,1.81,-.60,"blue",.108); eye(s,.20,1.81,-.60,"blue",.108)
+    for side in (-1,1):
+        cone(s,.14,.035,.62,(side*.28,2.44,0),"yellow")
+        capsule(s,.17,.50,(side*.46,1.16,0),"cream",(.72,1.48,.68))
+        uv_sphere(s,.17,(side*.31,.38,-.23),"cream",(1,.66,1.16))
+        claw_row(s,side*.31,.17,-.42,"white")
+    uv_sphere(s,.33,(0,1.31,-.52),"yellow",(1.2,.20,.22))
+    tail_segments(s,[(0,.70,.47),(.12,.47,.69),(.23,.23,.73)],"cream",.13,"yellow")
+    return normalize(s)
+
+def make_tentomon():
+    s=trimesh.Scene()
+    uv_sphere(s,.66,(0,.84,0),"red",(1.02,1.24,.92))
+    uv_sphere(s,.57,(0,1.68,0),"red",(1,.94,.88))
+    belly(s,(0,1.20,-.52),(1,.88,.55),"yellow")
+    eye(s,-.21,1.79,-.59,"blue",.11); eye(s,.21,1.79,-.59,"blue",.11)
+    for side in (-1,1):
+        cone(s,.07,.018,.52,(side*.25,2.30,0),"yellow")
+        uv_sphere(s,.08,(side*.25,2.59,0),"yellow")
+        uv_sphere(s,.42,(side*.47,1.24,.08),"yellow",(.70,1.30,.34))
+        uv_sphere(s,.21,(side*.47,1.09,-.18),"black",(.75,1,.26))
+        uv_sphere(s,.20,(side*.28,.28,-.27),"yellow",(1.25,.68,1.10))
+        claw_row(s,side*.28,.14,-.43,"black")
+    tail_segments(s,[(0,.68,.45),(0,.45,.68)],"red",.16)
+    return normalize(s)
+
+def make_gomamon():
+    s=trimesh.Scene()
+    uv_sphere(s,.62,(0,.83,0),"white",(1,1.28,.88))
+    uv_sphere(s,.59,(0,1.68,0),"white",(1,.98,.87))
+    belly(s,(0,1.20,-.51),(1,.90,.55),"white")
+    eye(s,-.20,1.80,-.59,"blue",.11); eye(s,.20,1.80,-.59,"blue",.11)
+    for side in (-1,1):
+        uv_sphere(s,.12,(side*.51,1.77,-.18),"pink")
+        uv_sphere(s,.30,(side*.56,1.14,.02),"white",(.55,1.62,.35))
+        uv_sphere(s,.20,(side*.28,.27,-.27),"white",(1.25,.68,1.15))
+        claw_row(s,side*.28,.14,-.43,"pink")
+    for x in (-.32,-.16,0,.16,.32): tuft(s,(x,2.22,.05),"red",.075,0)
+    tail_segments(s,[(0,.70,.46),(0,.48,.67)],"white",.17)
+    return normalize(s)
+
+def make_palmon():
+    s=trimesh.Scene()
+    uv_sphere(s,.64,(0,.83,0),"green",(1,1.25,.88))
+    uv_sphere(s,.57,(0,1.68,0),"green",(1,.97,.86))
+    belly(s,(0,1.20,-.51),(1,.90,.55),"cream")
+    eye(s,-.20,1.80,-.59,"red",.11); eye(s,.20,1.80,-.59,"red",.11)
+    # Leaf crown, broad and irregular rather than cones.
+    for i,a in enumerate(np.linspace(-1.15,1.15,5)):
+        uv_sphere(s,.19,(.38*math.sin(a),2.18,.05+.15*math.cos(a)),"green2",(.52,1.40,.28),48,30)
+    for side in (-1,1):
+        uv_sphere(s,.26,(side*.49,1.13,0),"green",(.76,1.45,.62))
+        uv_sphere(s,.22,(side*.28,.27,-.27),"green",(1.20,.68,1.10))
+        claw_row(s,side*.28,.14,-.43,"pink")
+    uv_sphere(s,.18,(-.18,.72,.53),"green2",(.72,1,1.6))
+    uv_sphere(s,.18,(.18,.72,.53),"green2",(.72,1,1.6))
+    return normalize(s)
+
+def make_veemon():
+    s=trimesh.Scene()
+    uv_sphere(s,.63,(0,.83,0),"lightblue",(1.03,1.24,.89))
+    uv_sphere(s,.59,(0,1.69,0),"lightblue",(1,.99,.88))
+    belly(s,(0,1.20,-.51),(1,.90,.55),"cream")
+    eye(s,-.205,1.80,-.59,"red",.115); eye(s,.205,1.80,-.59,"red",.115)
+    for side in (-1,1):
+        cone(s,.16,.035,.72,(side*.29,2.38,0),"lightblue")
+        cone(s,.10,.015,.30,(side*.29,2.80,0),"yellow")
+        capsule(s,.22,.48,(side*.50,1.12,0),"lightblue",(.76,1.42,.72))
+        uv_sphere(s,.20,(side*.28,.29,-.27),"lightblue",(1.20,.68,1.10))
+        claw_row(s,side*.28,.14,-.43,"white")
+    cone(s,.18,.01,.28,(0,1.31,-.70),"yellow")
+    tail_segments(s,[(0,.70,.46),(0,.46,.70)],"lightblue",.18,"yellow")
+    return normalize(s)
+
+def make_wormmon():
+    s=trimesh.Scene()
+    uv_sphere(s,.63,(0,.83,0),"green",(1,1.30,.89))
+    uv_sphere(s,.58,(0,1.70,0),"green",(1,.99,.88))
+    belly(s,(0,1.20,-.51),(1,.90,.55),"yellow")
+    eye(s,-.21,1.80,-.59,"red",.11); eye(s,.21,1.80,-.59,"red",.11)
+    for side in (-1,1):
+        cone(s,.09,.02,.62,(side*.25,2.35,0),"green2")
+        uv_sphere(s,.08,(side*.25,2.68,0),"yellow")
+        for i in range(3):
+            uv_sphere(s,.19,(side*(.45+i*.035),1.23-i*.12,.04),"green2",(.65,1.12,.65))
+        uv_sphere(s,.20,(side*.28,.28,-.27),"green",(1.20,.68,1.10))
+        claw_row(s,side*.28,.14,-.43,"yellow")
+    tail_segments(s,[(0,.68,.46),(0,.44,.68),(0,.22,.58)],"green",.18,"yellow")
+    return normalize(s)
 
 BUILDERS = {
-    'Agumon': agumon, 'Gabumon': gabumon, 'Guilmon': guilmon, 'Renamon': renamon,
-    'Biyomon': biyomon, 'Patamon': patamon, 'Gatomon': gatomon, 'Tentomon': tentomon,
-    'Gomamon': gomamon, 'Palmon': palmon, 'Veemon': veemon, 'Wormmon': wormmon,
+    "Agumon": make_agumon, "Gabumon": make_gabumon, "Guilmon": make_guilmon,
+    "Renamon": make_renamon, "Biyomon": make_biyomon, "Patamon": make_patamon,
+    "Gatomon": make_gatomon, "Tentomon": make_tentomon, "Gomamon": make_gomamon,
+    "Palmon": make_palmon, "Veemon": make_veemon, "Wormmon": make_wormmon,
 }
 
 for name, builder in BUILDERS.items():
-    path = os.path.join(OUT, name + '.glb')
-    builder().export(path, file_type='glb')
-    print('Generated textured', name, os.path.getsize(path))
+    path = os.path.join(OUT, name + ".glb")
+    builder().export(path, file_type="glb")
+    print("Generated anime-style", name, os.path.getsize(path))
