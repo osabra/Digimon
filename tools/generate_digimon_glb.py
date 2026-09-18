@@ -1,5 +1,6 @@
 import os, math, numpy as np, trimesh
-from trimesh.visual.texture import TextureVisuals, SimpleMaterial
+from trimesh.visual.texture import TextureVisuals
+from trimesh.visual.material import PBRMaterial
 
 OUT = "app/src/main/assets/digimon"
 os.makedirs(OUT, exist_ok=True)
@@ -17,12 +18,26 @@ COL = {
     "brown": (103, 55, 28), "grey": (128, 142, 151), "black": (4, 5, 9),
 }
 
-MATS = {k: SimpleMaterial(image=None, diffuse=np.array(v, dtype=np.uint8)) for k, v in COL.items()}
+MATS = {
+    k: PBRMaterial(
+        name=k,
+        baseColorFactor=np.array([v[0], v[1], v[2], 255], dtype=np.uint8),
+        metallicFactor=0.0,
+        roughnessFactor=0.88,
+    )
+    for k, v in COL.items()
+}
 
 def add(s, mesh, mat):
+    # Keep one shared vertex per geometric point so the exported GLB has
+    # genuinely smooth anime-style shading instead of a faceted/triangulated
+    # "stone" appearance.
     mesh.remove_duplicate_faces()
+    mesh.remove_unreferenced_vertices()
     mesh.merge_vertices()
     mesh.process(validate=True)
+    mesh.fix_normals()
+    _ = mesh.vertex_normals
     mesh.visual = TextureVisuals(uv=None, material=MATS[mat])
     s.add_geometry(mesh)
 
@@ -295,5 +310,14 @@ BUILDERS = {
 
 for name, builder in BUILDERS.items():
     path = os.path.join(OUT, name + ".glb")
-    builder().export(path, file_type="glb")
+    scene = builder()
+    # Recompute smooth normals after the complete character is assembled.
+    for geom in scene.geometry.values():
+        if isinstance(geom, trimesh.Trimesh):
+            geom.remove_unreferenced_vertices()
+            geom.merge_vertices()
+            geom.process(validate=True)
+            geom.fix_normals()
+            _ = geom.vertex_normals
+    scene.export(path, file_type="glb")
     print("Generated anime-style", name, os.path.getsize(path))
