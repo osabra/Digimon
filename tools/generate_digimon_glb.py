@@ -32,7 +32,11 @@ def add(s, mesh, mat):
     # Keep one shared vertex per geometric point so the exported GLB has
     # genuinely smooth anime-style shading instead of a faceted/triangulated
     # "stone" appearance.
-    mesh.remove_duplicate_faces()
+    # trimesh 4/5 compatible face cleanup
+    try:
+        mesh.update_faces(mesh.unique_faces())
+    except Exception:
+        pass
     mesh.remove_unreferenced_vertices()
     mesh.merge_vertices()
     mesh.process(validate=True)
