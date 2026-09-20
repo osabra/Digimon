@@ -230,10 +230,10 @@ class GlbDigimonView(context: Context, initialDigimon: String = "Gabumon") : GLS
                     val primitive = primitives.getJSONObject(p)
                     val attrs = primitive.getJSONObject("attributes")
                     val pos = readVec3(accessors, bufferViews, buffers, bin, attrs.getInt("POSITION"))
-                    val indexInfo = if (primitive.has("indices")) readIndices(accessors, bufferViews, buffers, bin, primitive.getInt("indices")) else sequentialIndices(vertexCount)
-                    val normals = smoothNormals(pos, indexInfo.indices)
                     val uvs = if (attrs.has("TEXCOORD_0")) readVec2(accessors, bufferViews, buffers, bin, attrs.getInt("TEXCOORD_0")) else FloatArray((pos.size / 3) * 2)
                     val vertexCount = pos.size / 3
+                    val indexInfo = if (primitive.has("indices")) readIndices(accessors, bufferViews, buffers, bin, primitive.getInt("indices")) else sequentialIndices(vertexCount)
+                    val normals = smoothNormals(pos, indexInfo.indices)
                     require(normals.size >= vertexCount * 3)
                     val packed = FloatArray(vertexCount * 8)
                     for (v in 0 until vertexCount) {
