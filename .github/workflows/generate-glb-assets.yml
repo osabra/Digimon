@@ -17,6 +17,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y blender
+      - name: Install Python mesh dependencies
+        run: python -m pip install --disable-pip-version-check trimesh numpy scipy scikit-image pygltflib pillow
       - name: Generate base assets
         run: |
           python tools/generate_digimon_glb.py
