@@ -230,7 +230,8 @@ class GlbDigimonView(context: Context, initialDigimon: String = "Gabumon") : GLS
                     val primitive = primitives.getJSONObject(p)
                     val attrs = primitive.getJSONObject("attributes")
                     val pos = readVec3(accessors, bufferViews, buffers, bin, attrs.getInt("POSITION"))
-                    val normals = if (attrs.has("NORMAL")) readVec3(accessors, bufferViews, buffers, bin, attrs.getInt("NORMAL")) else generatedNormals(pos)
+                    val indexInfo = if (primitive.has("indices")) readIndices(accessors, bufferViews, buffers, bin, primitive.getInt("indices")) else sequentialIndices(vertexCount)
+                    val normals = smoothNormals(pos, indexInfo.indices)
                     val uvs = if (attrs.has("TEXCOORD_0")) readVec2(accessors, bufferViews, buffers, bin, attrs.getInt("TEXCOORD_0")) else FloatArray((pos.size / 3) * 2)
                     val vertexCount = pos.size / 3
                     require(normals.size >= vertexCount * 3)
@@ -242,7 +243,6 @@ class GlbDigimonView(context: Context, initialDigimon: String = "Gabumon") : GLS
                         packed[c + 6] = uvs[b]; packed[c + 7] = uvs[b + 1]
                     }
                     val vbo = glBuffer(GLES30.GL_ARRAY_BUFFER, packed)
-                    val indexInfo = if (primitive.has("indices")) readIndices(accessors, bufferViews, buffers, bin, primitive.getInt("indices")) else sequentialIndices(vertexCount)
                     val ibo = glBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, indexInfo.buffer)
                     val materialIndex = primitive.optInt("material", -1)
                     val material = if (materialIndex in 0 until materials.length()) materials.getJSONObject(materialIndex) else null
@@ -318,7 +318,7 @@ class GlbDigimonView(context: Context, initialDigimon: String = "Gabumon") : GLS
             return out
         }
 
-        private data class IndexInfo(val buffer: ByteArray, val count: Int, val type: Int)
+        private data class IndexInfo(val buffer: ByteArray, val count: Int, val type: Int, val indices: IntArray)
         private fun readIndices(accessors: JSONArray, views: JSONArray, buffers: JSONArray, bin: ByteArray, accessorIndex: Int): IndexInfo {
             val a = accessors.getJSONObject(accessorIndex)
             val count = a.getInt("count")
@@ -328,20 +328,65 @@ class GlbDigimonView(context: Context, initialDigimon: String = "Gabumon") : GLS
             val offset = view.optInt("byteOffset", 0) + a.optInt("byteOffset", 0)
             val size = componentSize(type)
             val out = ByteArray(count * size)
+            val indices = IntArray(count)
             val src = ByteBuffer.wrap(source).order(ByteOrder.LITTLE_ENDIAN)
-            for (i in 0 until count) for (b in 0 until size) out[i * size + b] = src.get(offset + i * size + b)
-            return IndexInfo(out, count, glIndexType(type))
+            for (i in 0 until count) {
+                indices[i] = when (type) {
+                    5121 -> src.get(offset + i).toInt() and 0xFF
+                    5123 -> src.getShort(offset + i * 2).toInt() and 0xFFFF
+                    5125 -> src.getInt(offset + i * 4)
+                    else -> 0
+                }
+                for (b in 0 until size) out[i * size + b] = src.get(offset + i * size + b)
+            }
+            return IndexInfo(out, count, glIndexType(type), indices)
         }
 
         private fun sequentialIndices(count: Int): IndexInfo {
+            val indices = IntArray(count) { it }
             if (count <= 65535) {
                 val bb = ByteBuffer.allocate(count * 2).order(ByteOrder.LITTLE_ENDIAN)
                 repeat(count) { bb.putShort(it.toShort()) }
-                return IndexInfo(bb.array(), count, GLES30.GL_UNSIGNED_SHORT)
+                return IndexInfo(bb.array(), count, GLES30.GL_UNSIGNED_SHORT, indices)
             }
             val bb = ByteBuffer.allocate(count * 4).order(ByteOrder.LITTLE_ENDIAN)
             repeat(count) { bb.putInt(it) }
-            return IndexInfo(bb.array(), count, GLES30.GL_UNSIGNED_INT)
+            return IndexInfo(bb.array(), count, GLES30.GL_UNSIGNED_INT, indices)
+        }
+
+        private fun smoothNormals(pos: FloatArray, indices: IntArray): FloatArray {
+            val out = FloatArray(pos.size)
+            if (indices.size < 3) return generatedNormals(pos)
+            var i = 0
+            while (i + 2 < indices.size) {
+                val ia = indices[i] * 3
+                val ib = indices[i + 1] * 3
+                val ic = indices[i + 2] * 3
+                if (ia + 2 < pos.size && ib + 2 < pos.size && ic + 2 < pos.size) {
+                    val ax = pos[ib] - pos[ia]
+                    val ay = pos[ib + 1] - pos[ia + 1]
+                    val az = pos[ib + 2] - pos[ia + 2]
+                    val bx = pos[ic] - pos[ia]
+                    val by = pos[ic + 1] - pos[ia + 1]
+                    val bz = pos[ic + 2] - pos[ia + 2]
+                    val nx = ay * bz - az * by
+                    val ny = az * bx - ax * bz
+                    val nz = ax * by - ay * bx
+                    out[ia] += nx; out[ia + 1] += ny; out[ia + 2] += nz
+                    out[ib] += nx; out[ib + 1] += ny; out[ib + 2] += nz
+                    out[ic] += nx; out[ic + 1] += ny; out[ic + 2] += nz
+                }
+                i += 3
+            }
+            for (v in out.indices step 3) {
+                val len = kotlin.math.sqrt(out[v] * out[v] + out[v + 1] * out[v + 1] + out[v + 2] * out[v + 2])
+                if (len > 0.00001f) {
+                    out[v] /= len; out[v + 1] /= len; out[v + 2] /= len
+                } else {
+                    out[v] = 0f; out[v + 1] = 1f; out[v + 2] = 0f
+                }
+            }
+            return out
         }
 
         private fun generatedNormals(pos: FloatArray): FloatArray {
@@ -446,9 +491,9 @@ class GlbDigimonView(context: Context, initialDigimon: String = "Gabumon") : GLS
                 vec4 base = tex*uColor;
                 vec3 n=normalize(vNormal);
                 float d=max(dot(n,normalize(uLight)),0.0);
-                float toon=0.58+0.42*smoothstep(0.08,0.92,d);
+                float toon=0.80+0.20*smoothstep(0.05,0.95,d);
                 float rim=pow(1.0-max(dot(n,vec3(0,0,1)),0.0),2.4);
-                vec3 rgb=base.rgb*toon + base.rgb*0.08*rim;
+                vec3 rgb=base.rgb*toon + base.rgb*0.045*rim;
                 fragColor=vec4(rgb,base.a);
             }
         """
