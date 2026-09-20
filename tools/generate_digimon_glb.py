@@ -125,25 +125,76 @@ def make_agumon():
 
 def make_gabumon():
     s=trimesh.Scene()
-    # Blue body with the characteristic pale fur head and muzzle.
-    uv_sphere(s,.62,(0,.82,0),"blue",(1.05,1.25,.88))
-    uv_sphere(s,.50,(0,1.34,.01),"blue",(1.05,.82,.86))
-    uv_sphere(s,.60,(0,1.77,-.01),"cream",(1.02,1.02,.90))
-    belly(s,(0,1.20,-.53),(1.10,.88,.56))
-    uv_sphere(s,.23,(-.22,1.55,-.67),"cream",(1.32,.72,.62))
-    uv_sphere(s,.23,(.22,1.55,-.67),"cream",(1.32,.72,.62))
-    eye(s,-.205,1.84,-.66,"red",.125); eye(s,.205,1.84,-.66,"red",.125)
-    uv_sphere(s,.11,(0,1.53,-.84),"black",(1.25,.70,.58))
+
+    # Gabumon: build the recognizable anime silhouette rather than a generic
+    # blue/cream blob. The reptile body is yellow; the Garurumon pelt is
+    # pale/blue-striped, with a single horn, wolf muzzle, red eyes, claws and
+    # the characteristic chest emblem.
+    uv_sphere(s,.58,(0,.86,0),"yellow",(1.02,1.24,.86))
+    uv_sphere(s,.50,(0,1.38,-.02),"yellow",(1.02,.82,.80))
+
+    # Fur pelt / hood around the head and shoulders.
+    uv_sphere(s,.64,(0,1.78,.03),"white",(1.04,1.02,.90))
+    uv_sphere(s,.47,(-.36,1.52,-.01),"white",(.72,1.02,.82))
+    uv_sphere(s,.47,(.36,1.52,-.01),"white",(.72,1.02,.82))
+
+    # Jagged-looking fur hem made from overlapping tufts.
+    for x in np.linspace(-.46,.46,9):
+        yy=1.27 + .045*math.cos(x*7.0)
+        tuft(s,(float(x),yy,-.06),"white",.085,0)
+
+    # Wolf-like cheeks and muzzle.
+    uv_sphere(s,.25,(-.21,1.62,-.61),"white",(1.28,.76,.66),56,36)
+    uv_sphere(s,.25,(.21,1.62,-.61),"white",(1.28,.76,.66),56,36)
+    uv_sphere(s,.105,(0,1.57,-.84),"black",(1.28,.76,.60),48,32)
+
+    # Large anime eyes with red irises and bright highlights.
+    eye(s,-.205,1.91,-.68,"red",.135)
+    eye(s,.205,1.91,-.68,"red",.135)
+
+    # Single golden horn and the two floppy pelt ears.
+    cone(s,.19,.045,.62,(0,2.48,-.01),"yellow")
     for side in (-1,1):
-        cone(s,.18,.045,.58,(side*.30,2.40,-.01),"yellow")
-        uv_sphere(s,.24,(side*.54,1.43,0),"blue",(.70,1.28,.64))
-        uv_sphere(s,.16,(side*.55,1.53,-.23),"pink",(.72,1.12,.40))
-        uv_sphere(s,.20,(side*.30,.28,-.27),"blue",(1.25,.68,1.08))
-        claw_row(s,side*.30,.13,-.45,"white",3,.075,.18)
-    # Fur tufts around the forehead.
-    for x,y,sc in [(-.40,2.03,.72),(-.20,2.14,.78),(0,2.19,.86),(.20,2.14,.78),(.40,2.03,.72)]:
-        tuft(s,(x,y,.10),"white",.10*sc,0)
-    tail_segments(s,[(0,.72,.45),(0,.48,.67)],"blue",.18)
+        uv_sphere(s,.25,(side*.46,2.10,.01),"white",(.55,1.18,.30),56,34)
+        uv_sphere(s,.19,(side*.53,2.08,-.03),"blue",(.55,1.12,.20),48,30)
+
+    # Blue pelt stripes. Each stripe is a soft raised patch so the markings
+    # survive the 3D rotation instead of being a flat texture on one face.
+    stripe_specs=[
+        (-.48,2.12,-.53,.10,.30),(.48,2.12,-.53,.10,.30),
+        (-.53,1.86,-.47,.09,.28),(.53,1.86,-.47,.09,.28),
+        (-.50,1.60,-.43,.085,.25),(.50,1.60,-.43,.085,.25),
+        (-.40,1.42,-.30,.075,.22),(.40,1.42,-.30,.075,.22)
+    ]
+    for x,y,z,w,h in stripe_specs:
+        uv_sphere(s,.12,(x,y,z),"blue",(w/.12,h/.12,.16),40,24)
+
+    # Blue striped pelt down the back and sides.
+    for side in (-1,1):
+        for i in range(4):
+            yy=1.28-i*.18
+            uv_sphere(s,.13,(side*(.53+.02*i),yy,.12),"blue",
+                      (.52,1.0,.28),40,24)
+
+    # Yellow belly and the iconic blue/pink chest emblem.
+    belly(s,(0,1.13,-.53),(1.02,.88,.54),"yellow")
+    uv_sphere(s,.19,(0,1.18,-.86),"lightblue",(1.08,.18,1.00),48,28)
+    uv_sphere(s,.105,(0,1.18,-.885),"pink",(1.10,.10,.58),40,24)
+    uv_sphere(s,.06,(-.10,1.18,-.91),"pink",(1.15,.08,.42),32,20)
+    uv_sphere(s,.06,(.10,1.18,-.91),"pink",(1.15,.08,.42),32,20)
+
+    # Yellow reptile arms, white furry cuffs and large anime claws.
+    for side in (-1,1):
+        capsule(s,.16,.43,(side*.49,1.08,-.04),"yellow",(.80,1.18,.82))
+        uv_sphere(s,.18,(side*.49,.78,-.13),"white",(.82,.88,.72),48,28)
+        claw_row(s,side*.49,.61,-.28,"white",3,.075,.19)
+
+    # Compact yellow feet and segmented tail.
+    for side in (-1,1):
+        uv_sphere(s,.22,(side*.29,.31,-.25),"yellow",(1.22,.68,1.12),56,34)
+        claw_row(s,side*.29,.14,-.43,"white",3,.075,.18)
+    tail_segments(s,[(0,.74,.43),(0,.50,.68),(0,.27,.62)],"yellow",.19)
+
     return normalize(s)
 
 def make_guilmon():
